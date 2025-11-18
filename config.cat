@@ -4,7 +4,7 @@ config {
 	default_flags: [-Wall -Wextra -march=native]
 }
 
-target executable ylang {
+target executable mythril {
 	sources: [
         src/arena/arena.c
         src/arena/arena_avx2.c
@@ -22,10 +22,10 @@ target executable ylang {
         src/main.c
     ]
 	flags: [-ggdb]
-	output: build/bin/ylang
+	output: build/bin/mythril
 }
 
-target debug ylang_debug {
+target debug mythril_debug {
 	sources: [
         src/arena/arena.c
         src/arena/arena_avx2.c
@@ -43,11 +43,11 @@ target debug ylang_debug {
         src/main.c
     ]
 	flags: [-O0 -g3 -fsanitize=address -Weverything -fno-omit-frame-pointer]
-	output: build/debug/ylang_debug
+	output: build/debug/mythril_debug
 }
 
-target test ylang_tests {
+target test mythril_tests {
 	sources: [tests/test_main.c]
 	flags: [-g -Weverything]
-	output: build/tests/ylang_test
+	output: build/tests/mythril_test
 }
