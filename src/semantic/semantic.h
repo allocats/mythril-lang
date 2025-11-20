@@ -6,10 +6,10 @@
 #include "../ast/types.h"
 #include "../symbols/types.h"
 
-void semantic_analyze_function(
-    AstFunction* func,
+void semantic_analyze_program(
+    Program* program,
     ArenaAllocator* arena,
     SymbolTable* global_table
-); 
+);
 
 #endif // !SEMANTIC_H

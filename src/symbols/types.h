@@ -72,9 +72,10 @@ typedef struct {
 } StructSymbol;
 
 typedef struct {
-    TypeInfo type;
+    TypeInfo type_info;
+
     union {
-        i32 int_value;
+        i64 int_value;
         f64 float_value;
 
         struct {
@@ -85,18 +86,18 @@ typedef struct {
 } ConstSymbol;
 
 typedef struct {
-    TypeInfo info;
+    TypeInfo type_info;
     usize stack_offset;
     b32 is_initialized;
 } VarSymbol;
 
 typedef struct {
-    u32 hash;
+    u64 hash;
 
     u32 name_len;
     char* name_ptr;
 
-    SymbolType type;
+    SymbolType sym_type;
     SymbolScope scope;
 
     usize defined_at_line;

@@ -6,10 +6,10 @@
 #define DEFAULT_CAP 64
 
 [[gnu::always_inline]]
-u32 hash_fnv1a(const char* s, u32 len) {
-    u32 hash = 2166136261u;
+u64 hash_fnv1a(const char* s, u32 len) {
+    u64 hash = 2166136261u;
 
-    for (u32 i = 0; i < len; i++) {
+    for (u64 i = 0; i < (u64)len; i++) {
         hash ^= s[i];
         hash *= 16777619u;
     }
@@ -45,6 +45,7 @@ void add_symbol(
 ) {
     for (usize i = 0; i < table -> count; i++) {
         if (table -> symbols[i].hash == symbol.hash) {
+            printf("debug=%ld debug=%ld\n", table -> symbols[i].hash, symbol.hash);
             fprintf(
                 stderr,
                 "Symbol '%.*s' already defined",
@@ -60,7 +61,7 @@ void add_symbol(
 
 Symbol* lookup_symbol_all(
     SymbolTable* table,
-    u32 hash
+    u64 hash
 ) {
     SymbolTable* curr = table;
 
@@ -79,7 +80,7 @@ Symbol* lookup_symbol_all(
 
 Symbol* lookup_symbol_scope(
     SymbolTable* table,
-    u32 hash
+    u64 hash
 ) {
     for (usize i = 0; i < table -> count; i++) {
         if (table -> symbols[i].hash == hash) {

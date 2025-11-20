@@ -15,6 +15,7 @@
     } while(0);
 
 #define IS_PRIMITIVE_TYPE(n) ((n) >= T_INT8 && (n) <= T_SSIZE)
+#define IS_EXPR_OP(n) ((n) >= T_SLASH && (n) <= T_BIT_NOT_EQUALS)
 
 void tokens_print(Tokens* tokens);
 

@@ -2,77 +2,11 @@
 #include "types.h"
 
 #include "../token/token.h"
-#include "../utils/macros.h"
+// #include "../utils/macros.h"
 
 #include <stdio.h>
 
 #define DEFAULT_CAP 256
-
-AstNode* ast_create_func(
-    AstNode* node,
-    char* name_ptr,
-    usize name_len,
-    char* ret_ptr,
-    usize ret_len,
-    AstNode** params,
-    usize param_count,
-    AstNode* block
-);
-
-AstNode* ast_create_block(
-    ArenaAllocator* arena,
-    AstNode** statements,
-    usize count
-);
-
-AstNode* ast_create_func_call(
-    ArenaAllocator* arena,
-    char* name_ptr,
-    usize name_len,
-    AstNode** args,
-    usize arg_count
-);
-
-AstNode* ast_create_statement(
-    Parser* p
-);
-
-AstNode* ast_create_var_decl(
-    ArenaAllocator* arena,
-    char* type_ptr,
-    usize type_len,
-    char* name_ptr,
-    usize name_len,
-    AstNode* initializer 
-);
-
-AstNode* ast_create_assignment(
-    ArenaAllocator* arena,
-    AstNode* target,
-    AstNode* value 
-);
-
-AstNode* ast_create_number_literal(
-    ArenaAllocator* arena,
-    u64 literal
-);
-
-AstNode* ast_create_string_literal(
-    ArenaAllocator* arena,
-    char* ptr,
-    u32 len
-);
-
-AstNode* ast_create_identifier(
-    ArenaAllocator* arena,
-    char* name_ptr,
-    usize name_len
-);
-
-AstNode* ast_create_return(
-    ArenaAllocator* arena,
-    AstNode* expr
-);
 
 Token* parser_peek(Parser* p) {
     if (p -> index >= p -> count) return nullptr;
@@ -112,7 +46,7 @@ AstNode* parse_function_call(
     Token* name_token
 );
 
-ProgramFunctions* ast_build(
+Program* ast_build(
     Tokens* tokens,
     ArenaAllocator* arena
 ) {
@@ -123,25 +57,27 @@ ProgramFunctions* ast_build(
         .index = 0
     };
 
-    ProgramFunctions* funcs = arena_alloc(arena, sizeof(*funcs));
+    Program* program = arena_alloc(arena, sizeof(*program));
 
-    funcs -> count = 0;
-    funcs -> items = arena_alloc(arena, sizeof(AstNode) * DEFAULT_CAP);
+    program -> count = 0;
+    program -> items = arena_alloc(arena, sizeof(AstNode) * DEFAULT_CAP);
 
     while (parser.index < parser.count) {
-        AstNode* func = &(funcs -> items[funcs -> count++]);
+        AstNode* node = &(program -> items[program -> count++]);
         Token* tok = parser_peek(&parser);
 
         if (tok -> type == T_FUNCTION) {
-            parse_function(func, &parser);
-        }
+            parse_function(node, &parser);
+        }     
     }
 
-    return funcs;
+    return program;
 }
 
 AstNode* parse_expression(Parser* p) {
     Token* token = parser_advance(p);
+
+    AstNode* left = nullptr;
 
     if (token -> type == T_IDENTIFIER) {
         // function call
@@ -149,23 +85,18 @@ AstNode* parse_expression(Parser* p) {
             return parse_function_call(p, token);
         }
 
-        return ast_create_identifier(
+        left = ast_create_identifier(
             p -> arena,
             token -> literal,
             token -> len
         );
-    }
-
-    // TODO: EVERYTHING
-    if (token -> type == T_STR_LITERAL) {
-        return ast_create_string_literal(
+    } else if (token -> type == T_STR_LITERAL) {
+        left = ast_create_string_literal(
             p -> arena, 
             token -> literal + 1,
             token -> len - 2
         );
-    }
-
-    if (token -> type == T_NUMBER) {
+    } else if (token -> type == T_NUMBER) {
         u64 number = 0;
 
         for (u32 i = 0; i < token -> len; i++) {
@@ -174,27 +105,46 @@ AstNode* parse_expression(Parser* p) {
             number = number * 10 + digit;
         }
 
-        return ast_create_number_literal(
+        left = ast_create_number_literal(
             p -> arena,
             number
         );
+    } else {
+        return nullptr;
     }
 
-    return nullptr;
+
+    Token* op = parser_peek(p);
+
+    if (IS_EXPR_OP(op -> type)) {
+        parser_advance(p);
+        AstNode* right =  parse_expression(p);
+
+        if (right != nullptr) {
+            return ast_create_binary_expr(
+                p -> arena,
+                op -> type,
+                left,
+                right
+            );
+        }
+    }
+
+    return left;
 }
 
 AstNode* parse_statement(Parser* p) {
     Token* token = parser_peek(p);
 
-    if (token -> type == T_RETURN) {
-        parser_advance(p);
-        AstNode* expr = parse_expression(p);
-        parser_expect(p, T_SEMICOLON, "Expected ';'");
-        return ast_create_return(p -> arena, expr);
-    }
-
     if (IS_PRIMITIVE_TYPE(token -> type)) {
         Token* type = parser_advance(p);
+
+        u32 pointer_depth = 0;
+        while (parser_check(p, T_ASTERIX)) {
+            parser_advance(p);
+            pointer_depth++;
+        }
+
         Token* identifier = parser_expect(p, T_IDENTIFIER, "Expected identifier");
 
         if (parser_check(p, T_SEMICOLON)) {
@@ -204,6 +154,7 @@ AstNode* parse_statement(Parser* p) {
                 p -> arena,
                 type -> literal,
                 type -> len,
+                pointer_depth,
                 identifier -> literal,
                 identifier -> len,
                 NULL
@@ -218,6 +169,7 @@ AstNode* parse_statement(Parser* p) {
                 p -> arena,
                 token -> literal,
                 token -> len,
+                pointer_depth,
                 identifier -> literal,
                 identifier -> len,
                 expr
@@ -256,6 +208,59 @@ AstNode* parse_statement(Parser* p) {
 
         parser_expect(p, T_SEMICOLON, "Expected ';'");
         return expr;
+    }
+
+    if (token -> type == T_VOID) {
+        Token* type = parser_advance(p);
+
+        u32 pointer_depth = 0;
+        while (parser_check(p, T_ASTERIX)) {
+            parser_advance(p);
+            pointer_depth++;
+        }
+
+        if (pointer_depth == 0) {
+            fprintf(stderr, "Error: Invalid type 'void' maybe you meant 'void*'?\n");
+            exit(1);
+        }
+
+        Token* identifier = parser_expect(p, T_IDENTIFIER, "Expected identifier");
+
+        if (parser_check(p, T_SEMICOLON)) {
+            parser_advance(p);
+
+            return ast_create_var_decl(
+                p -> arena,
+                type -> literal,
+                type -> len,
+                pointer_depth,
+                identifier -> literal,
+                identifier -> len,
+                NULL
+            );
+        } else if (parser_check(p, T_EQUALS)) {
+            parser_advance(p);
+
+            AstNode* expr = parse_expression(p);
+            parser_expect(p, T_SEMICOLON, "Expected ';'");
+
+            return ast_create_var_decl(
+                p -> arena,
+                token -> literal,
+                token -> len,
+                pointer_depth,
+                identifier -> literal,
+                identifier -> len,
+                expr
+            );
+        }
+    }
+
+    if (token -> type == T_RETURN) {
+        parser_advance(p);
+        AstNode* expr = parse_expression(p);
+        parser_expect(p, T_SEMICOLON, "Expected ';'");
+        return ast_create_return(p -> arena, expr);
     }
 
     return nullptr;
@@ -299,12 +304,20 @@ void parse_function(
     if (!parser_check(p, T_RIGHTPAREN)) {
         while (!parser_check(p, T_RIGHTPAREN)){
             Token* param_type = parser_advance(p);
+
+            u32 param_pointer_depth = 0;
+            while (parser_check(p, T_ASTERIX)) {
+                parser_advance(p);
+                param_pointer_depth++;
+            }
+
             Token* param_name = parser_expect(p, T_IDENTIFIER, "Expected parameter name");
 
             params[param_count++] = ast_create_var_decl(
                 p -> arena,
                 param_type -> literal,
                 param_type -> len,
+                param_pointer_depth,
                 param_name -> literal,
                 param_name -> len,
                 NULL
@@ -344,8 +357,12 @@ AstNode* parse_function_call(
     if (!parser_check(p, T_RIGHTPAREN)) {
         while (!parser_check(p, T_RIGHTPAREN)) { 
             args[arg_count++] = parse_expression(p);
+
             if (parser_check(p, T_COMMA)) {
                 parser_advance(p);
+            } else if (!parser_check(p, T_RIGHTPAREN)) {
+                fprintf(stderr, "Error: Expected ',' or ')' in function call\n");
+                exit(1);
             }
         } 
     }
@@ -359,329 +376,4 @@ AstNode* parse_function_call(
         args,
         arg_count
     );
-}
-
-AstNode* ast_create_func(
-    AstNode* node,
-    char* name_ptr,
-    usize name_len,
-    char* ret_ptr,
-    usize ret_len,
-    AstNode** params,
-    usize param_count,
-    AstNode* block
-) {
-    node -> type = A_FUNC;
-
-    node -> as.function.name_ptr = name_ptr; 
-    node -> as.function.name_len = name_len;
-
-    node -> as.function.ret_ptr = ret_ptr;
-    node -> as.function.ret_len = ret_len;
-
-    node -> as.function.params = params;
-    node -> as.function.param_count = param_count;
-
-    node -> as.function.block = block;
-
-    return node;
-}
-
-AstNode* ast_create_var_decl(
-    ArenaAllocator* arena,
-    char* type_ptr,
-    usize type_len,
-    char* name_ptr,
-    usize name_len,
-    AstNode* initializer 
-) {
-    AstNode* node = arena_alloc(arena, sizeof(*node));
-
-    node -> type = A_VAR_DECL;
-
-    node -> as.var_decl.type_ptr = type_ptr;
-    node -> as.var_decl.type_len = type_len;
-
-    node -> as.var_decl.name_ptr = name_ptr;
-    node -> as.var_decl.name_len = name_len;
-
-    node -> as.var_decl.initializer = initializer;
-
-    return node;
-}
-
-AstNode* ast_create_func_call(
-    ArenaAllocator* arena,
-    char* name_ptr,
-    usize name_len,
-    AstNode** args,
-    usize arg_count
-) {
-    AstNode* node = arena_alloc(arena, sizeof(*node));
-
-    node -> type = A_FUNC_CALL;
-
-    node -> as.function_call.name_ptr = name_ptr;
-    node -> as.function_call.name_len = name_len;
-
-    node -> as.function_call.args = args;
-    node -> as.function_call.arg_count = arg_count;
-
-    return node;
-}
-
-AstNode* ast_create_block(
-    ArenaAllocator* arena,
-    AstNode** statements,
-    usize count
-) {
-    AstNode* node = arena_alloc(arena, sizeof(*node));
-
-    node -> type = A_BLOCK;
-
-    node -> as.block.statements = statements;
-    node -> as.block.count = count;
-
-    return node;
-}
-
-AstNode* ast_create_identifier(
-    ArenaAllocator* arena,
-    char* name_ptr,
-    usize name_len
-) {
-    AstNode* node = arena_alloc(arena, sizeof(*node));
-
-    node -> type = A_IDENT;
-
-    node -> as.identifier.name_ptr = name_ptr;
-    node -> as.identifier.name_len = name_len;
-
-    return node;
-}
-
-AstNode* ast_create_number_literal(
-    ArenaAllocator* arena,
-    u64 value 
-) {
-    AstNode* node = arena_alloc(arena, sizeof(*node));
-
-    node -> type = A_LITERAL;
-
-    node -> as.literal.type = T_NUMBER;
-    node -> as.literal.value.int_value = value;
-
-    return node;
-}
-
-AstNode* ast_create_string_literal(
-    ArenaAllocator* arena,
-    char* ptr,
-    u32 len
-) {
-    AstNode* node = arena_alloc(arena, sizeof(*node));
-
-    node -> type = A_LITERAL;
-
-    node -> as.literal.type = T_STR_LITERAL;
-    node -> as.literal.value.string.ptr = ptr;
-    node -> as.literal.value.string.len = len;
-
-    return node;
-}
-
-AstNode* ast_create_return(
-    ArenaAllocator* arena,
-    AstNode* expr
-) {
-    AstNode* node = arena_alloc(arena, sizeof(*node));
-
-    node -> type = A_RETURN;
-    node -> as.ret.expression = expr;
-
-    return node;
-}
-
-AstNode* ast_create_assignment(
-    ArenaAllocator* arena,
-    AstNode* target,
-    AstNode* value 
-) {
-    AstNode* node = arena_alloc(arena, sizeof(*node));
-
-    node -> type = A_ASSIGNMENT;
-
-    node -> as.assignment.target = target;
-    node -> as.assignment.value = value;
-
-    return node;
-}
-
-// Helper to print indentation
-static void print_indent(int depth) {
-    for (int i = 0; i < depth; i++) {
-        printf("  ");
-    }
-}
-
-// Helper to print string slices
-static void print_slice(char* ptr, usize len) {
-    printf("%.*s", (int)len, ptr);
-}
-
-static void print_node(AstNode* node, int depth);
-
-static void print_function(AstFunction* func, int depth) {
-    print_indent(depth);
-    printf("Function: ");
-    print_slice(func -> name_ptr, func -> name_len);
-    printf("  ->  ");
-    print_slice(func -> ret_ptr, func -> ret_len);
-    printf("\n");
-    
-    if (func -> param_count > 0) {
-        print_indent(depth + 1);
-        printf("Parameters (%zu):\n", func -> param_count);
-        for (usize i = 0; i < func -> param_count; i++) {
-            print_node(func -> params[i], depth + 2);
-        }
-    }
-    
-    print_indent(depth + 1);
-    printf("Body:\n");
-    print_node(func -> block, depth + 2);
-}
-
-static void print_block(AstBlock* block, int depth) {
-    print_indent(depth);
-    printf("Block (%zu statements):\n", block -> count);
-    for (usize i = 0; i < block -> count; i++) {
-        print_node(block -> statements[i], depth + 1);
-    }
-}
-
-static void print_var_decl(AstVarDecl* decl, int depth) {
-    print_indent(depth);
-    printf("VarDecl: ");
-    print_slice(decl -> type_ptr, decl -> type_len);
-    printf(" ");
-    print_slice(decl -> name_ptr, decl -> name_len);
-    
-    if (decl -> initializer) {
-        printf(" =\n");
-        print_node(decl -> initializer, depth + 1);
-    } else {
-        printf("\n");
-    }
-}
-
-static void print_assignment(AstAssignment* assign, int depth) {
-    print_indent(depth);
-    printf("Assignment:\n");
-    
-    print_indent(depth + 1);
-    printf("Target:\n");
-    print_node(assign -> target, depth + 2);
-    
-    print_indent(depth + 1);
-    printf("Value:\n");
-    print_node(assign -> value, depth + 2);
-}
-
-static void print_literal(AstLiteral* lit, int depth) {
-    print_indent(depth);
-    printf("Literal: ");
-    
-    switch (lit -> type) {
-        case T_NUMBER:
-            printf("%d (int)\n", lit -> value.int_value);
-            break;
-        case T_STR_LITERAL:
-            printf("\"");
-            print_slice(lit -> value.string.ptr, lit -> value.string.len);
-            printf("\" (string)\n");
-            break;
-        default:
-            printf("(unknown type)\n");
-    }
-}
-
-static void print_identifier(ASTIdentifier* ident, int depth) {
-    print_indent(depth);
-    printf("Identifier: ");
-    print_slice(ident -> name_ptr, ident -> name_len);
-    printf("\n");
-}
-
-static void print_function_call(AstFnCall* call, int depth) {
-    print_indent(depth);
-    printf("FunctionCall: ");
-    print_slice(call -> name_ptr, call -> name_len);
-    printf("\n");
-    
-    if (call -> arg_count > 0) {
-        print_indent(depth + 1);
-        printf("Arguments (%zu):\n", call -> arg_count);
-        for (usize i = 0; i < call -> arg_count; i++) {
-            print_node(call -> args[i], depth + 2);
-        }
-    }
-}
-
-static void print_return(AstReturn* ret, int depth) {
-    print_indent(depth);
-    printf("Return:\n");
-    if (ret -> expression) {
-        print_node(ret -> expression, depth + 1);
-    }
-}
-
-static void print_node(AstNode* node, int depth) {
-    if (!node) {
-        print_indent(depth);
-        printf("(null node)\n");
-        return;
-    }
-    
-    switch (node -> type) {
-        case A_FUNC:
-            print_function(&node -> as.function, depth);
-            break;
-        case A_BLOCK:
-            print_block(&node -> as.block, depth);
-            break;
-        case A_VAR_DECL:
-            print_var_decl(&node -> as.var_decl, depth);
-            break;
-        case A_ASSIGNMENT:
-            print_assignment(&node -> as.assignment, depth);
-            break;
-        case A_LITERAL:
-            print_literal(&node -> as.literal, depth);
-            break;
-        case A_IDENT:
-            print_identifier(&node -> as.identifier, depth);
-            break;
-        case A_FUNC_CALL:
-            print_function_call(&node -> as.function_call, depth);
-            break;
-        case A_RETURN:
-            print_return(&node -> as.ret, depth);
-            break;
-        default:
-            print_indent(depth);
-            printf("Unknown node type: %s\n", AST_TYPES_STRINGS[node -> type]);
-    }
-}
-
-void print_program(ProgramFunctions* funcs) {
-    printf("=== Program AST ===\n\n");
-    printf("Total functions: %zu\n\n", funcs -> count);
-    
-    for (usize i = 0; i < funcs -> count; i++) {
-        print_node(&funcs -> items[i], 0);
-        printf("\n");
-    }
-    
-    printf("=== End AST ===\n");
 }

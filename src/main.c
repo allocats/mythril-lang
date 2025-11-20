@@ -7,6 +7,9 @@
 #include "ast/ast.h"
 #include "ast/types.h"
 #include "lexer/lexer.h"
+#include "semantic/semantic.h"
+#include "symbols/symbols.h"
+#include "symbols/types.h"
 #include "token/token.h"
 #include "utils/macros.h"
 #include "utils/types.h"
@@ -40,6 +43,8 @@ char* map_file(const char* path, usize* len) {
 }
 
 i32 main(i32 argc, char* argv[]) {
+    if (argc != 2) return 1;
+
     init_arena(&arena, 65536);
 
     usize len;
@@ -56,9 +61,12 @@ i32 main(i32 argc, char* argv[]) {
 
     tokens_print(tokens);
 
-    ProgramFunctions* funcs = ast_build(tokens, &arena);
+    Program* program = ast_build(tokens, &arena);
 
-    print_program(funcs);
+    print_program(program);
+
+    SymbolTable* global_table = enter_scope(&arena, nullptr);
+    semantic_analyze_program(program, &arena, global_table);
 
     munmap(buffer, len);
 }
