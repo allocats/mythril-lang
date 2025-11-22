@@ -2,7 +2,7 @@
 #ifndef AST_H
 #define AST_H
 
-#include "parser.h"
+#include "parser/parser.h"
 #include "types.h"
 
 b32 ast_is_decl(AstNode* node);

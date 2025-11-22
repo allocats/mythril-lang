@@ -21,6 +21,7 @@ typedef struct AstNode AstNode;
 
 #define FOREACH_AST(AST)    \
     AST(AST_IMPORT)         \
+    AST(AST_MACRO)          \
     AST(AST_STRUCT)         \
     AST(AST_ENUM)           \
     AST(AST_FUNCTION)       \
@@ -31,8 +32,8 @@ typedef struct AstNode AstNode;
     AST(AST_CONST_DECL)     \
     AST(AST_ASSIGNMENT)     \
     AST(AST_EXPR_STMT)      \
+    AST(AST_IF)             \
     AST(AST_FOR)            \
-    AST(AST_BLOCK)          \
     AST(AST_RETURN)         \
                             \
     AST(AST_UNARY)          \
@@ -66,12 +67,32 @@ static const char* LITERAL_STRINGS[] = {
     FOREACH_LITERAL(GENERATE_STRING)
 };
 
+/*
+*
+* EQ    = equals
+* NEQ   = not equals
+* LT    = less than
+* LTE   = less than or equals to
+* GT    = greater than
+* GTE   = greater than or equals to
+* ADDR  = address (&var)
+* DEREF = derefence
+*
+*/
 #define FOREACH_OP(OP)  \
     OP(OP_ADD)          \
     OP(OP_SUB)          \
     OP(OP_MUL)          \
     OP(OP_DIV)          \
-    OP(OP_DEREF)       
+    OP(OP_MOD)          \
+    OP(OP_EQ)           \
+    OP(OP_NEQ)          \
+    OP(OP_LT)           \
+    OP(OP_LTE)          \
+    OP(OP_GT)           \
+    OP(OP_GTE)          \
+    OP(OP_ADDR)         \
+    OP(OP_DEREF)      
 
 typedef enum {
     FOREACH_OP(GENERATE_ENUM)
@@ -82,6 +103,11 @@ static const char* OPKIND_STRINGS[] = {
 };
 
 // structs 
+
+typedef struct {
+    AstNode* nodes;
+    usize count;
+} AstVec;
 
 typedef struct {
     LiteralKind kind;
@@ -120,8 +146,7 @@ typedef struct {
 typedef struct {
     AstNode* identifier;
 
-    AstNode** args;
-    usize arg_count;
+    AstVec args;
 } AstFnCall;
 
 typedef struct {
@@ -141,16 +166,17 @@ typedef struct {
 } AstReturn;
 
 typedef struct {
-    AstNode** statements;
-    usize statement_count;
-} AstBlock;
-
-typedef struct {
     AstNode* initial;
     AstNode* condition;
     AstNode* step;
-    AstNode* block;
+    AstVec   block;
 } AstFor;
+
+typedef struct {
+    AstNode* cond;
+    AstVec if_block;
+    AstVec else_block;
+} AstIf;
 
 typedef struct {
     AstNode* type; // just another identifier!
@@ -174,10 +200,9 @@ typedef struct {
     AstNode* return_type; // Just another identifier :3
     AstNode* identifier;
 
-    AstNode** params;
-    usize param_count;
+    AstVec params;
 
-    AstNode* block;
+    AstVec block;
 } AstFunction;
 
 typedef struct {
@@ -189,25 +214,28 @@ typedef struct {
 typedef struct {
     AstNode* identifier;
 
-    AstNode** fields;
-    usize field_count;
-
-    AstNode** funcs;
-    usize func_count;
+    AstVec fields;
+    AstVec funcs;
 } AstStruct;
+
+// Starting off with C like macros, text replacement
+typedef struct {
+    AstNode* identifier;
+    AstVec params;
+    AstVec block;
+} AstMacro;
 
 typedef struct {
     AstNode* module;
 } AstImport;
 
 typedef struct AstNode {
-    usize node_id;
-
     AstKind kind;
 
     union {
         // Declarations
         AstImport       import;
+        AstMacro        macro_decl;
         AstStruct       struct_decl;
         AstEnum         enum_decl;
         AstFunction     function;
@@ -216,8 +244,8 @@ typedef struct AstNode {
         AstVarDecl      var_decl;
         AstConstDecl    const_decl;
         AstAssignment   assignment;
+        AstIf           if_stmt;
         AstFor          for_loop;
-        AstBlock        block;
         AstReturn       return_stmt;
         
         // Expressions
