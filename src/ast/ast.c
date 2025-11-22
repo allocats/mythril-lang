@@ -331,6 +331,23 @@ void parse_function(
     
     parser_expect(p, T_RIGHTPAREN, "Expected ')'");
 
+    if (parser_check(p, T_SEMICOLON)) {
+        parser_advance(p);
+
+        ast_create_func(
+            func_node,
+            fn_name -> literal,
+            fn_name -> len,
+            ret_type -> literal,
+            ret_type -> len,
+            params,
+            param_count,
+            nullptr
+        );
+
+        return;
+    }
+
     AstNode* block = parse_block(p);
 
     ast_create_func(

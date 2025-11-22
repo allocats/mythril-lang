@@ -12,4 +12,17 @@ void semantic_analyze_program(
     SymbolTable* global_table
 );
 
+void semantic_analyze_function(
+    AstFunction* func,
+    ArenaAllocator* arena,
+    SymbolTable* global_table
+);
+
+void semantic_analyze_block(
+    ArenaAllocator* arena,
+    AstFunction* func,
+    SymbolTable* table,
+    Symbol* symbol
+);
+
 #endif // !SEMANTIC_H

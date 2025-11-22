@@ -1,6 +1,7 @@
 #include "symbols.h"
 #include "types.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 
 #define DEFAULT_CAP 64
@@ -45,7 +46,6 @@ void add_symbol(
 ) {
     for (usize i = 0; i < table -> count; i++) {
         if (table -> symbols[i].hash == symbol.hash) {
-            printf("debug=%ld debug=%ld\n", table -> symbols[i].hash, symbol.hash);
             fprintf(
                 stderr,
                 "Symbol '%.*s' already defined",
@@ -89,4 +89,20 @@ Symbol* lookup_symbol_scope(
     }
 
     return nullptr;
+}
+
+i32 is_builtin_function(u64 hash) {
+    switch (hash) {
+        case 0xf9a3110f1d2c19a: {
+            return BUILTIN_SYSCALL;
+        }
+
+        case 0x7ed45c995c8bff92: {
+            return BUILTIN_ASM;
+        }
+
+        default: {
+            return NOT_BUILTIN;
+        }
+    }
 }

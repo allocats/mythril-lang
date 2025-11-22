@@ -14,4 +14,10 @@ void add_symbol(SymbolTable* table, Symbol symbol);
 Symbol* lookup_symbol_all(SymbolTable* table, u64 hash);
 Symbol* lookup_symbol_scope(SymbolTable* table, u64 hash);
 
+i32 is_builtin_function(u64 hash);
+
+#define NOT_BUILTIN     -1
+#define BUILTIN_SYSCALL 0
+#define BUILTIN_ASM     1
+
 #endif // !SYMBOLS_H

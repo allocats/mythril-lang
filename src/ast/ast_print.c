@@ -118,12 +118,16 @@ void print_return(AstReturn* ret, int depth) {
     }
 }
 
+void print_binary_expr(AstExpr* expr) {
+
+}
+
 void print_expr(AstExpr* expr, int depth) {
     print_indent(depth);
     printf("Expression:\n");
 
     if (expr -> kind == EXPR_BINARY) {
-        // NOW
+        print_binary_expr(expr);
     } else {
         printf("NOT SUPPORTED YET");
     }

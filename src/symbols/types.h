@@ -100,7 +100,7 @@ typedef struct {
     SymbolType sym_type;
     SymbolScope scope;
 
-    usize defined_at_line;
+    usize times_called;
 
     union {
         FunctionSymbol  function;

@@ -1,39 +1,24 @@
 #include "semantic.h"
 
 #include "../symbols/symbols.h"
+#include "../utils/macros.h"
 
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
-
-/*
-*
-*   proto
-*
-*/
-
-void semantic_analyze_function(
-    AstFunction* func,
-    ArenaAllocator* arena,
-    SymbolTable* global_table
-);
-
-void semantic_analyze_block(
-    AstFunction* func,
-    Symbol* symbol
-);
-
-/*
-*
-*   defs
-*
-*/
 
 static void error_already_defined(
     u32 len,
     const char* s
 ) {
     fprintf(stderr, "Error: '%.*s' is already defined\n", len, s);
+    exit(1);
+}
+
+static void error_builtin_function(
+    u32 len,
+    const char* s
+) {
+    fprintf(stderr, "Error: '%.*s' is a builtin function\n", len, s);
     exit(1);
 }
 
@@ -94,11 +79,12 @@ void semantic_analyze_function(
         .scope = SC_GLOBAL,
         .name_ptr = func -> name_ptr,
         .name_len = func -> name_len,
+        .times_called = 0,
 
         .data.function = {
             .param_types = arena_alloc(arena, sizeof(TypeInfo) * func -> param_count),
             .param_count = func -> param_count,
-            .is_builtin = false,
+            .is_builtin = (func -> block != nullptr),
             .return_type = {
                 .type_ptr = func -> ret_ptr, 
                 .type_len = func -> ret_len, 
@@ -127,6 +113,10 @@ void semantic_analyze_function(
 
     symbol.hash = hash;
 
+    if (is_builtin_function(hash) != NOT_BUILTIN) {
+        error_builtin_function(symbol.name_len, symbol.name_ptr);
+    }
+
     Symbol* sym = lookup_symbol_all(global_table, hash);
 
     if (sym && sym -> hash != 0) {
@@ -142,7 +132,10 @@ void semantic_analyze_function(
             TypeInfo* type_1 = &sym -> data.function.return_type;
             TypeInfo* type_2 = &symbol.data.function.return_type;
 
-            if (memcmp(type_1, type_2, sizeof(*type_1)) != 0 ) {
+            u64 type_1_hash = hash_fnv1a(type_1 -> type_ptr, type_1 -> type_len);
+            u64 type_2_hash = hash_fnv1a(type_2 -> type_ptr, type_2 -> type_len);
+
+            if (type_1_hash != type_2_hash) {
                 error_type_mismatch(
                     type_1 -> type_len,
                     type_1 -> type_ptr,
@@ -153,6 +146,7 @@ void semantic_analyze_function(
 
             sym -> data.function.is_defined = true;
             sym -> data.function.block = symbol.data.function.block;
+
             return;
         }
 
@@ -163,10 +157,81 @@ void semantic_analyze_function(
             );
         }
 
+        /*
+        * do a strcmp and chaining
+        */
         return;
     }
 
     add_symbol(global_table, symbol);
 
-    // semantic_analyze_block(func, &global_table -> symbols[global_table -> count - 1]);
+    if (MEOW_LIKELY(symbol.data.function.is_defined)) {
+        semantic_analyze_block(
+            arena,
+            func,
+            global_table,
+            &global_table -> symbols[global_table -> count - 1]
+        );
+    }
+}
+
+void semantic_analyze_block(
+    ArenaAllocator* arena,
+    AstFunction* func,
+    SymbolTable* table,
+    Symbol* symbol
+) {
+    SymbolTable* fn_scope = enter_scope(arena, table);
+
+    usize param_count = symbol -> data.function.param_count;
+    usize stack_offset = 0;
+
+    for (usize i = 0; i < param_count; i++) {
+        TypeInfo type = symbol -> data.function.param_types[i];
+
+        AstVarDecl* param = &func -> params[i] -> ast.var_decl;
+
+        char* name_ptr = param -> name_ptr;
+        usize name_len = param -> name_len;
+
+        u64 hash = hash_fnv1a(name_ptr, name_len);
+
+        Symbol param_symbol = {
+            .hash = hash,
+            .name_len = name_len,
+            .name_ptr = name_ptr,
+            .sym_type = S_PARAM,
+            .scope = SC_LOCAL,
+            .times_called = 0,
+
+            .data.parameter = {
+                .type_info = type,
+                .is_initialized = true,
+                .stack_offset = stack_offset
+            }
+        };
+
+        add_symbol(fn_scope, param_symbol);
+
+        // increment stack offset
+    }
+
+    usize count = func -> block -> ast.block.count;
+
+    for (usize i = 0; i < count; i++) {
+        AstNode* current = func -> block -> ast.block.statements[i];
+
+        switch (current -> type) {
+            case A_VAR_DECL: {
+                printf("found variable decl\n");
+            } break;
+
+            case A_FUNC_CALL: {
+                printf("found function call\n");
+            } break;
+
+            default: {
+            } break;
+        }
+    }
 }
