@@ -20,6 +20,7 @@ typedef struct AstNode AstNode;
 */
 
 #define FOREACH_AST(AST)    \
+    AST(AST_MODULE)         \
     AST(AST_IMPORT)         \
     AST(AST_MACRO)          \
     AST(AST_STRUCT)         \
@@ -229,11 +230,16 @@ typedef struct {
     AstNode* module;
 } AstImport;
 
+typedef struct {
+    AstNode* identifier;
+} AstModule;
+
 typedef struct AstNode {
     AstKind kind;
 
     union {
         // Declarations
+        AstModule       module;
         AstImport       import;
         AstMacro        macro_decl;
         AstStruct       struct_decl;
