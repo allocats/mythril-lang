@@ -8,9 +8,10 @@
 
 typedef struct {
     ArenaAllocator* arena;
-    Tokens* tokens;
+    Token* tokens;
     usize count;
     usize index;
+    const char* buffer; // Buffer for error handling
 } Parser;
 
 #endif // !AST_PARSER_TYPES_H
