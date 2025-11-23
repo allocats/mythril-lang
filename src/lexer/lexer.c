@@ -104,20 +104,11 @@ char* parse_word(
             }
 
             token -> type = T_IDENTIFIER;
-        }
+        } break;
 
         case 'c': {
             if (len == sizeof("char") - 1 && strncmp(start, "char", len) == 0) {
                 token -> type = T_CHAR;
-                break;
-            }
-
-            token -> type = T_IDENTIFIER;
-        }
-
-        case 'e': {
-            if (len == sizeof("enum") - 1 && strncmp(start, "enum", len) == 0) {
-                token -> type = T_ENUM;
                 break;
             }
 
@@ -127,7 +118,16 @@ char* parse_word(
             }
 
             token -> type = T_IDENTIFIER;
-        }
+        } break;
+
+        case 'e': {
+            if (len == sizeof("enum") - 1 && strncmp(start, "enum", len) == 0) {
+                token -> type = T_ENUM;
+                break;
+            }
+
+            token -> type = T_IDENTIFIER;
+        } break;
 
         case 'f': {
             if (len == sizeof("fn") - 1 && strncmp(start, "fn", len) == 0) {
@@ -179,6 +179,20 @@ char* parse_word(
                 break;
             }
 
+            if (len == sizeof("import") - 1 && strncmp(start, "import", len) == 0) {
+                token -> type = T_IMPORT;
+                break;
+            }
+
+            token -> type = T_IDENTIFIER;
+        } break;
+
+        case 'm': {
+            if (len == sizeof("module") - 1 && strncmp(start, "module", len) == 0) {
+                token -> type = T_MODULE;
+                break;
+            }
+
             token -> type = T_IDENTIFIER;
         } break;
 
@@ -194,7 +208,7 @@ char* parse_word(
             }
 
             token -> type = T_IDENTIFIER;
-        }
+        } break;
 
         case 'u': {
             if (len == sizeof("u8") - 1 && strncmp(start, "u8", len) == 0) {
@@ -236,10 +250,15 @@ char* parse_word(
                 break;
             }
 
-            // if (len == sizeof("syscall") - 1 && strncmp(start, "syscall", len) == 0) {
-            //     token -> type = T_SYSCALL;
-            //     break;
-            // }
+            if (len == sizeof("static") - 1 && strncmp(start, "static", len) == 0) {
+                token -> type = T_STATIC;
+                break;
+            }
+
+            if (len == sizeof("syscall") - 1 && strncmp(start, "syscall", len) == 0) {
+                token -> type = T_SYSCALL;
+                break;
+            }
 
             token -> type = T_IDENTIFIER;
         } break;

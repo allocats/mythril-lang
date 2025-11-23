@@ -84,9 +84,13 @@
                             \
     TOKEN(T_VOID)           \
     TOKEN(T_CONST)          \
+    TOKEN(T_STATIC)         \
                             \
     TOKEN(T_NULL)           \
     TOKEN(T_NULLPTR)        \
+                            \
+    TOKEN(T_IMPORT)         \
+    TOKEN(T_MODULE)         \
                             \
     TOKEN(T_FUNCTION)       \
     TOKEN(T_STRUCT)         \
