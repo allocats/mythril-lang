@@ -2,6 +2,7 @@
 #ifndef AST_TYPES_H
 #define AST_TYPES_H
 
+#include "../token/types.h"
 #include "../utils/types.h"
 
 // what is a program? what is source code?
@@ -25,6 +26,7 @@ typedef struct AstNode AstNode;
     AST(AST_MACRO)          \
     AST(AST_STRUCT)         \
     AST(AST_ENUM)           \
+    AST(AST_IMPL)           \
     AST(AST_FUNCTION)       \
     AST(AST_GLOBAL_CONST)   \
     AST(AST_STATIC_VAR)     \
@@ -37,10 +39,13 @@ typedef struct AstNode AstNode;
     AST(AST_FOR)            \
     AST(AST_RETURN)         \
                             \
+    AST(AST_INDEX)          \
+    AST(AST_MEMBER_ACCESS)  \
     AST(AST_UNARY)          \
     AST(AST_BINARY)         \
     AST(AST_FN_CALL)        \
     AST(AST_LITERAL)        \
+    AST(AST_POSTFIX)        \
     AST(AST_IDENTIFIER)     
 
 typedef enum {
@@ -53,12 +58,13 @@ static const char* AST_KIND_STRINGS[] = {
 
 // Types
 
-#define FOREACH_LITERAL(LIT)  \
-    LIT(LIT_UINT)             \
-    LIT(LIT_INT)              \
-    LIT(LIT_FLOAT)            \
-    LIT(LIT_BOOL)             \
-    LIT(LIT_STRING)       
+#define FOREACH_LITERAL(LIT)    \
+    LIT(LIT_UINT)               \
+    LIT(LIT_INT)                \
+    LIT(LIT_FLOAT)              \
+    LIT(LIT_BOOL)               \
+    LIT(LIT_STRING)             \
+    LIT(LIT_NULL)       
 
 typedef enum {
     FOREACH_LITERAL(GENERATE_ENUM)
@@ -114,18 +120,15 @@ typedef struct {
 typedef struct {
     LiteralKind kind;
 
-    union {
-        u64 uint_value;
-        i64 int_value;
-        f64 float_value;
-        b32 bool_value;
-
-        struct {
-            char* ptr;
-            usize len;
-        } string;
-    } literal;
+    // Store the string representation, convert during semantics, or just work with it entirely
+    char* ptr;
+    usize len;
 } AstLiteral;
+
+typedef struct {
+    TokenType op;
+    AstNode* operand;
+} AstPostfix;
 
 typedef struct {
     const char* ptr;
@@ -135,21 +138,35 @@ typedef struct {
 } AstIdentifier;
 
 typedef struct {
-    OpKind op;
+    // OpKind op;
+    TokenType op;
     AstNode* operand;
 } AstUnary;
 
 typedef struct {
-    OpKind op;
+    // OpKind op;
+    TokenType op;
     AstNode* left;
     AstNode* right;
 } AstBinary;
 
 typedef struct {
     AstNode* identifier;
-
     AstVec args;
 } AstFnCall;
+
+typedef struct {
+    AstNode* array;
+    AstNode* index;
+} AstIndex;
+
+typedef struct {
+    AstNode* object;
+
+    char* member_ptr;
+    usize member_len;
+    u64   member_hash;
+} AstMemberAccess;
 
 typedef struct {
     AstKind kind;
@@ -181,9 +198,10 @@ typedef struct {
 } AstIf;
 
 typedef struct {
-    AstNode* type; // just another identifier!
-    AstNode* identifier;
+    // AstNode* type; // just another identifier!
+    AstNode* target;
     AstNode* value;
+    OpKind op;
 } AstAssignment;
 
 typedef struct {
@@ -194,6 +212,7 @@ typedef struct {
 
 typedef struct {
     AstNode* type; // just another identifier!
+    usize pointer_depth;
     AstNode* identifier;
     AstNode* value; // expr or null
 } AstVarDecl;
@@ -217,8 +236,12 @@ typedef struct {
     AstNode* identifier;
 
     AstVec fields;
-    AstVec funcs;
 } AstStruct;
+
+typedef struct {
+    AstNode* type_name;
+    AstVec functions;
+} AstImpl;
 
 // Starting off with C like macros, text replacement
 typedef struct {
@@ -245,6 +268,7 @@ typedef struct AstNode {
         AstMacro        macro_decl;
         AstStruct       struct_decl;
         AstEnum         enum_decl;
+        AstImpl         impl;
         AstFunction     function;
         
         // Statements
@@ -261,6 +285,9 @@ typedef struct AstNode {
         AstFnCall       fn_call;
         AstLiteral      literal;
         AstIdentifier   identifier;
+        AstPostfix      postfix;
+        AstIndex        index;
+        AstMemberAccess member_access;
     }; 
 } AstNode;
 

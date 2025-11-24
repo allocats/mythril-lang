@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 #include "arena/arena.h"
-#include "ast/ast.h"
+#include "ast_new/ast.h"
 #include "ast/types.h"
 #include "lexer/lexer.h"
 #include "semantic/semantic.h"
@@ -30,12 +30,14 @@ char* map_file(const char* path, usize* len) {
         return nullptr;
     }
 
-    char* buffer = mmap(NULL, st.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    char* buffer = mmap(NULL, st.st_size + 1, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     if (buffer == MAP_FAILED) {
         MEOW_ERROR("Failed to allocate file");
         close(fd);
         return nullptr;
     }
+
+    buffer[st.st_size] = 0;
 
     (*len) = st.st_size;
 
@@ -61,12 +63,12 @@ i32 main(i32 argc, char* argv[]) {
 
     tokens_print(tokens);
 
-    Program* program = ast_build(tokens, &arena);
+    Program* program = ast_build(&arena, tokens, buffer);
 
     print_program(program);
 
-    SymbolTable* global_table = enter_scope(&arena, nullptr);
-    semantic_analyze_program(program, &arena, global_table);
+    // SymbolTable* global_table = enter_scope(&arena, nullptr);
+    // semantic_analyze_program(program, &arena, global_table);
 
     munmap(buffer, len);
 }

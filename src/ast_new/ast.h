@@ -18,4 +18,6 @@ AstNode* ast_create_identifier(ArenaAllocator* arena, const char* p, const usize
 
 void ast_vec_push(ArenaAllocator* arena, AstVec* vec, AstNode* node);
 
+void print_program(Program* program);
+
 #endif // !AST_H

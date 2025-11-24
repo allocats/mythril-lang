@@ -1,26 +1,26 @@
 struct MyStruct {
-    i32 a;
-    i32 b;
+    a: i32;
+    b: i32;
 }
 
-MyStruct {
+impl MyStruct {
     // All structs are intialized to zero, this leads to 0 * 2 
-    fn i32 do_nothing(&self) {
-        my_struct -> a *= 2;
+    fn do_nothing(self): i32 {
+        self -> a *= 2;
         return my_struct -> a;
     }
 
-    fn i32 do_something(&self) {
-        my_struct -> b += 2;
+    fn do_something(&self): i32 {
+        self -> b += 2;
         return my_struct -> b;
     }
 }
 
-fn void main(i32 argc, char* argv[]) {
-    MyStruct my_struct;
+fn main(argc: i32, argv: char*[]): void {
+    let my_struct: MyStruct;
     
-    i32 a = my_struct.do_nothing();
-    i32 b = my_struct.do_something();
+    let a: i32 = my_struct.do_nothing();
+    let b: i32 = my_struct.do_something();
 
-    print("a={} b={}", a, b);
+    println("a=% b=%", a, b);
 }

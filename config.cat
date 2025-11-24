@@ -11,9 +11,8 @@ target executable mythril {
         src/arena/arena_sse2.c
         src/arena/arena_generic.c
 
-        src/ast/ast.c
-        src/ast/ast_create.c
-        src/ast/ast_print.c
+        src/ast_new/ast.c
+        src/ast_new/parser/parser.c
 
         src/lexer/lexer.c
 
