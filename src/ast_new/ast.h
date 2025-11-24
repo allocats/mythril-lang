@@ -10,9 +10,12 @@ b32 ast_is_stmt(AstNode* node);
 b32 ast_is_expr(AstNode* node);
 
 void ast_error(Token* tok, const char* buf, const char* msg);
+void ast_warn(Token* tok, const char* buf, const char* msg);
 
 Program* ast_build(ArenaAllocator* arena, Tokens* tokens, const char* buf);
 
 AstNode* ast_create_identifier(ArenaAllocator* arena, const char* p, const usize len);
+
+void ast_vec_push(ArenaAllocator* arena, AstVec* vec, AstNode* node);
 
 #endif // !AST_H

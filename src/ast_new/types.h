@@ -106,7 +106,7 @@ static const char* OPKIND_STRINGS[] = {
 // structs 
 
 typedef struct {
-    AstNode* nodes;
+    AstNode** nodes;
     usize count;
     usize cap;
 } AstVec;

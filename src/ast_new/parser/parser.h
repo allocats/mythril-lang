@@ -54,8 +54,10 @@ AstNode* parse_const_decl(Parser *p);
 
 // Statements
 
+AstNode* parse_statement(Parser *p);
+
 /*
-*   Returns stack allocated struct, nodes inside the vec need to be
+*   Returns stack allocated struct, node pointers inside the vec need to be
 *   heap allocated. This is meant to be a struct copy directly into
 *   the AstNode's AstVec field. Stack copy frees itself after scope 
 *   while the node pointers persist on the heap
@@ -63,15 +65,16 @@ AstNode* parse_const_decl(Parser *p);
 AstVec parse_block(Parser* p);
 
 /*
-*   Meant for vec of variable decls (params), takes preallocated vector
-*/
-void parse_vec_var_decl(Parser* p, AstVec* vec);
-
-/*
-*   Returns allocated variable decl node 
+*   Returns allocated variable decl node pointer, the value 
+*   field is a nullptr if no '=' is present after the identifier.
 */
 AstNode* parse_var_decl(Parser* p);
 
 // Expressions
+
+/*
+*   
+*/
+AstNode* parse_expr(Parser *p);
 
 #endif // !AST_PARSER_H

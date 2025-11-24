@@ -140,3 +140,20 @@ AstNode* ast_create_identifier(ArenaAllocator* arena, const char* ptr, const usi
 
     return node;
 }
+
+inline
+void ast_vec_push(ArenaAllocator* arena, AstVec* vec, AstNode* node) {
+    usize old_cap = vec -> cap;
+
+    if (vec -> count >= old_cap) {
+        usize new_cap = old_cap == 0 ? 8 : old_cap * 2;
+
+        usize old_size = old_cap * sizeof(AstNode*);
+        usize new_size = new_cap * sizeof(AstNode*);
+
+        vec -> nodes = arena_realloc(arena, vec -> nodes, old_size, new_size);
+        vec -> cap = new_cap;
+    }
+
+    vec -> nodes[vec -> count++] = node;
+}

@@ -3,6 +3,7 @@
 #include "../ast.h"
 #include "../../token/token.h"
 #include "../../utils/macros.h"
+#include "../../utils/types.h"
 
 [[gnu::always_inline]]
 Token* parser_peek(Parser *p) {
@@ -52,7 +53,7 @@ AstNode* parse_function_decl(Parser *p) {
 
     fn_node -> kind = AST_FUNCTION;
 
-    fn_node -> function.params.nodes = arena_alloc(p -> arena, sizeof(AstNode) * 8);
+    fn_node -> function.params.nodes = arena_alloc(p -> arena, sizeof(AstNode*) * 8);
     fn_node -> function.params.count = 0;
     fn_node -> function.params.cap   = 8;
 
@@ -72,11 +73,11 @@ AstNode* parse_function_decl(Parser *p) {
         ast_error(&p -> tokens[p -> index], p -> buffer, "Expected '('");
     }
 
+    AstVec* params_vec = &fn_node -> function.params;
+
     while (!parser_check(p, T_RIGHTPAREN)) {
-        parse_vec_var_decl(
-            p,
-            &fn_node -> function.params
-        );
+        AstNode* parameter = parse_var_decl(p);
+        ast_vec_push(p -> arena, params_vec, parameter);
 
         if (!parser_check(p, T_COMMA) && !parser_check(p, T_RIGHTPAREN)) {
             ast_error(parser_peek(p), p -> buffer, "Expected ',' or ')'");
@@ -85,6 +86,12 @@ AstNode* parse_function_decl(Parser *p) {
         if (!parser_check(p, T_COMMA) && !parser_check_ahead(p, T_RIGHTPAREN)) {
             ast_error(parser_peek(p), p -> buffer, "Expected ',' between parameters");
         }
+
+        if (parser_check(p, T_RIGHTPAREN)) {
+            break;
+        } 
+
+        parser_advance_expect(p, T_COMMA, "Expected ','");
     }
 
     parser_advance_expect(p, T_RIGHTPAREN, "Expected ')'");
@@ -114,12 +121,18 @@ AstVec parse_block(Parser *p) {
     parser_advance(p); // skip initial token "{"
 
     AstVec vec = {
-        .nodes = arena_alloc(p -> arena, sizeof(AstNode) * 8),
+        .nodes = arena_alloc(p -> arena, sizeof(AstNode*) * 8),
         .count = 0,
         .cap = 8
     };
 
     while (!parser_check(p, T_RIGHTBRACE)) {
+        AstNode* statement = parse_statement(p);
+        ast_vec_push(p -> arena, &vec, statement);
+    }
+
+    if (vec.count == 0) {
+        ast_warn(parser_peek(p), p -> buffer, "Empty block");
     }
 
     return vec;
@@ -142,38 +155,7 @@ AstNode* parse_var_decl(Parser *p) {
     
     node -> var_decl.type = ast_create_identifier(arena, type_tok -> literal, type_tok -> len);
     node -> var_decl.identifier = ast_create_identifier(arena, ident_tok -> literal, ident_tok -> len);
-    node -> var_decl.value = nullptr;
+    node -> var_decl.value = parser_check(p, T_EQUALS) == false ? nullptr : parse_expr(p);
 
     return node;
-}
-
-void parse_vec_var_decl(Parser *p, AstVec* vec) {
-    ArenaAllocator* arena = p -> arena;
-
-    Token* type_tok = parser_advance(p);
-
-    if (type_tok -> type != T_IDENTIFIER && !IS_PRIMITIVE_TYPE(type_tok -> type)) {
-        ast_error(type_tok, p -> buffer, "Expected type");
-    }
-
-    Token* ident_tok = parser_advance_expect(p, T_IDENTIFIER, "Expected identifier");
-
-    if (vec -> count >= vec -> cap) {
-        usize new_cap = vec -> cap == 0 ? 8 : vec -> cap * 2;
-
-        if (MEOW_UNLIKELY(new_cap > 128)) {
-            ast_error(ident_tok, p -> buffer, "wtf are you doing? more than 128 parameters");
-        }
-
-        vec -> nodes = arena_realloc(arena, vec -> nodes, vec -> cap, new_cap);
-        vec -> cap = new_cap;
-    }
-
-    AstNode* node = &vec -> nodes[vec -> count++];
-
-    node -> kind = AST_VAR_DECL;
-    
-    node -> var_decl.type = ast_create_identifier(arena, type_tok -> literal, type_tok -> len);
-    node -> var_decl.identifier = ast_create_identifier(arena, ident_tok -> literal, ident_tok -> len);
-    node -> var_decl.value = nullptr;
 }
