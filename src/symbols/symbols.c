@@ -1,108 +1,121 @@
 #include "symbols.h"
 #include "types.h"
-
-#include <stdbool.h>
 #include <stdio.h>
 
-#define DEFAULT_CAP 64
+SymbolTable* create_symtable(ArenaAllocator* arena) {
+    SymbolTable* table = arena_alloc(arena, sizeof(*table));
 
-[[gnu::always_inline]]
-u64 hash_fnv1a(const char* s, u32 len) {
-    u64 hash = 2166136261u;
+    table -> current_stack_offset = 0;
+    table -> current_scope = nullptr;
+    table -> scope_depth = 0;
 
-    for (u64 i = 0; i < (u64)len; i++) {
-        hash ^= s[i];
-        hash *= 16777619u;
-    }
-
-    return hash;
-} 
-
-SymbolTable* enter_scope(
-    ArenaAllocator* arena,
-    SymbolTable* current
-) {
-    SymbolTable* new_scope = arena_alloc(arena, sizeof(*new_scope));
-
-    new_scope -> parent = current;
-    new_scope -> symbols = arena_alloc(arena, sizeof(Symbol) * DEFAULT_CAP);
-    new_scope -> capacity = DEFAULT_CAP;
-    new_scope -> count = 0;
-    new_scope -> scope_depth = current ? current -> scope_depth + 1 : 0;
-    
-    return new_scope;
+    return table;
 }
 
-[[gnu::always_inline]]
-SymbolTable* exit_scope(
-    SymbolTable* current
-) {
-    return current -> parent;
+Symbol* create_symbol(ArenaAllocator* arena, SymbolKind kind, const char* name, usize len, u64 hash) {
+    Symbol* sym = arena_alloc(arena, sizeof(*sym));
+
+    sym -> kind = kind;
+
+    sym -> name_ptr = name;
+    sym -> name_len = len;
+    sym -> name_hash = hash;
+
+    sym -> type = nullptr;
+    sym -> node = nullptr;
+
+    sym -> is_used = false;
+    sym -> is_const = false; 
+
+    sym -> stack_offset = 0;
+
+    return sym;
 }
 
-void add_symbol(
-    SymbolTable* table,
-    Symbol symbol
-) {
-    for (usize i = 0; i < table -> count; i++) {
-        if (table -> symbols[i].hash == symbol.hash) {
-            fprintf(
-                stderr,
-                "Symbol '%.*s' already defined",
-                symbol.name_len,
-                symbol.name_ptr
-            );
-            exit(1);
-        }
-    }
+Symbol* symbol_lookup(SymbolTable* syms, u64 hash) {
+    Scope* scope = syms -> current_scope;
 
-    table -> symbols[table -> count++] = symbol;
-}
+    while (scope) {
+        for (usize i = 0; i < scope -> count; i++) {
+            Symbol* sym = scope -> symbols[i];
 
-Symbol* lookup_symbol_all(
-    SymbolTable* table,
-    u64 hash
-) {
-    SymbolTable* curr = table;
-
-    while (curr) {
-        for (usize i = 0; i < curr -> count; i++) {
-            if (curr -> symbols[i].hash == hash) {
-                return &(curr -> symbols[i]);
+            if (sym -> name_hash == hash) {
+                return sym;
             }
         }
 
-        curr = exit_scope(curr);
+        scope = scope -> parent;
     }
 
     return nullptr;
 }
 
-Symbol* lookup_symbol_scope(
-    SymbolTable* table,
-    u64 hash
-) {
-    for (usize i = 0; i < table -> count; i++) {
-        if (table -> symbols[i].hash == hash) {
-            return &(table -> symbols[i]);
+Symbol* symbol_lookup_scope(SymbolTable* syms, u64 hash) {
+    Scope* scope = syms -> current_scope;
+
+    if (scope) {
+        for (usize i = 0; i < scope -> count; i++) {
+            Symbol* sym = scope -> symbols[i];
+
+            if (sym -> name_hash == hash) {
+                return sym;
+            }
         }
     }
 
     return nullptr;
 }
 
-i32 is_builtin_function(u64 hash) {
-    switch (hash) {
-        case 0xf9a3110f1d2c19a: {
-            return BUILTIN_SYSCALL;
-        }
+void define_symbol(ArenaAllocator* arena, SymbolTable* table, Symbol* sym) {
+    Symbol* existing = symbol_lookup_scope(table, sym -> name_hash);
 
-        case 0x7ed45c995c8bff92: {
-            return BUILTIN_ASM;
-        }
-
-        default: {
-            return NOT_BUILTIN;
-        }
+    if (existing) {
+        // todo: error
+        fprintf(stderr, "Error: '%.*s' already defined\n", (i32) sym -> name_len, sym -> name_ptr);
+        exit(1);
     }
+
+    sym -> scope_depth = table -> scope_depth;
+
+    Scope* scope = table -> current_scope;
+
+    push_scope(arena, scope, sym);
+}
+
+void scope_enter(ArenaAllocator* arena, SymbolTable* table) {
+    Scope* new_scope = arena_alloc(arena, sizeof(*new_scope));
+
+    new_scope -> parent = table -> current_scope;
+    new_scope -> symbols = arena_alloc(arena, sizeof(Symbol*) * 16);
+    new_scope -> capacity = 16;
+    new_scope -> count = 0;
+
+    table -> current_scope = new_scope;
+    table -> scope_depth++;
+}
+
+void scope_exit(SymbolTable* table) {
+    if (!table -> current_scope) {
+        return;
+    }
+
+    Scope* prev_scope = table -> current_scope;
+
+    table -> current_scope = prev_scope -> parent; 
+    table -> scope_depth--;
+}
+
+void push_scope(ArenaAllocator* arena, Scope* scope, Symbol* symbol) {
+    if (scope -> count >= scope -> capacity) {
+        usize old_cap = scope -> capacity;
+        usize new_cap = old_cap == 0 ? 16 : old_cap * 2;
+
+        usize old_sz = old_cap * sizeof(AstNode*);
+        usize new_sz = new_cap * sizeof(AstNode*);
+
+        scope -> symbols = arena_realloc(arena, scope -> symbols, old_sz, new_sz);
+        scope -> capacity = new_cap;
+    }
+
+    scope -> symbols[scope -> count++] = symbol;
 }

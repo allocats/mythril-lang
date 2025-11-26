@@ -3,6 +3,7 @@
 
 #include "../utils/macros.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,9 +34,8 @@ void error(
         p++;
     }
 
-    MEOW_ERROR("Found error %zu:%zu", row, col);
-
-    exit(1);
+    fprintf(stderr, "Found error %zu:%zu\n\n", row, col);
+    // exit(1);
 }
 
 [[gnu::always_inline]]
@@ -89,35 +89,16 @@ char* parse_word(
     switch (*start) {
         case 'b': {
             if (len == sizeof("bool") - 1 && strncmp(start, "bool", len) == 0) {
-                token -> type = T_BOOL8;
+                token -> type = T_BOOL;
                 break;
             }
             
-            if (len == sizeof("b8") - 1 && strncmp(start, "b8", len) == 0) {
-                token -> type = T_BOOL8;
-                break;
-            }
-
-            if (len == sizeof("b32") - 1 && strncmp(start, "b32", len) == 0) {
-                token -> type = T_BOOL32;
-                break;
-            }
-
             token -> type = T_IDENTIFIER;
-        }
+        } break;
 
         case 'c': {
             if (len == sizeof("char") - 1 && strncmp(start, "char", len) == 0) {
                 token -> type = T_CHAR;
-                break;
-            }
-
-            token -> type = T_IDENTIFIER;
-        }
-
-        case 'e': {
-            if (len == sizeof("enum") - 1 && strncmp(start, "enum", len) == 0) {
-                token -> type = T_ENUM;
                 break;
             }
 
@@ -127,7 +108,16 @@ char* parse_word(
             }
 
             token -> type = T_IDENTIFIER;
-        }
+        } break;
+
+        case 'e': {
+            if (len == sizeof("enum") - 1 && strncmp(start, "enum", len) == 0) {
+                token -> type = T_ENUM;
+                break;
+            }
+
+            token -> type = T_IDENTIFIER;
+        } break;
 
         case 'f': {
             if (len == sizeof("fn") - 1 && strncmp(start, "fn", len) == 0) {
@@ -154,8 +144,8 @@ char* parse_word(
         } break;
 
         case 'i': {
-            if (len == sizeof("in") - 1 && strncmp(start, "in", len) == 0) {
-                token -> type = T_IN;
+            if (len == sizeof("if") - 1 && strncmp(start, "if", len) == 0) {
+                token -> type = T_IF;
                 break;
             }
 
@@ -179,6 +169,34 @@ char* parse_word(
                 break;
             }
 
+            if (len == sizeof("import") - 1 && strncmp(start, "import", len) == 0) {
+                token -> type = T_IMPORT;
+                break;
+            }
+
+            if (len == sizeof("impl") - 1 && strncmp(start, "impl", len) == 0) {
+                token -> type = T_IMPL;
+                break;
+            }
+
+            token -> type = T_IDENTIFIER;
+        } break;
+
+        case 'l': {
+            if (len == sizeof("let") - 1 && strncmp(start, "let", len) == 0) {
+                token -> type = T_LET;
+                break;
+            }
+
+            token -> type = T_IDENTIFIER;
+        } break;
+
+        case 'm': {
+            if (len == sizeof("module") - 1 && strncmp(start, "module", len) == 0) {
+                token -> type = T_MODULE;
+                break;
+            }
+
             token -> type = T_IDENTIFIER;
         } break;
 
@@ -194,7 +212,7 @@ char* parse_word(
             }
 
             token -> type = T_IDENTIFIER;
-        }
+        } break;
 
         case 'u': {
             if (len == sizeof("u8") - 1 && strncmp(start, "u8", len) == 0) {
@@ -222,6 +240,11 @@ char* parse_word(
                 break;
             }
 
+            if (len == sizeof("uninit") - 1 && strncmp(start, "uninit", len) == 0) {
+                token -> type = T_UNINIT;
+                break;
+            }
+
             token -> type = T_IDENTIFIER;
         } break;
 
@@ -233,6 +256,16 @@ char* parse_word(
 
             if (len == sizeof("struct") - 1 && strncmp(start, "struct", len) == 0) {
                 token -> type = T_STRUCT;
+                break;
+            }
+
+            if (len == sizeof("self") - 1 && strncmp(start, "self", len) == 0) {
+                token -> type = T_SELF;
+                break;
+            }
+
+            if (len == sizeof("static") - 1 && strncmp(start, "static", len) == 0) {
+                token -> type = T_STATIC;
                 break;
             }
 
@@ -300,6 +333,11 @@ char* parse_delim(
     token -> len = 1;
 
     switch (*cursor) {
+        case '\0': {
+            token -> type = T_EOF;
+            return cursor;
+        } break;
+
         case ';': {
             // if (stack -> top != -1) {
             //     MEOW_ERROR("Missing closing delimiter");
@@ -477,13 +515,13 @@ char* parse_operator(
                 if (*cursor == '&') {
                     token -> type = T_COND_AND;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
                 
                 if (*cursor == '=') {
                     token -> type = T_BIT_AND_EQUALS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
             } break;
 
@@ -491,13 +529,13 @@ char* parse_operator(
                 if (*cursor == '|') {
                     token -> type = T_COND_OR;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
 
                 if (*cursor == '=') {
                     token -> type = T_BIT_OR_EQUALS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
             } break;
 
@@ -505,7 +543,7 @@ char* parse_operator(
                 if (*cursor == '=') {
                     token -> type = T_BIT_NOT_EQUALS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
             } break;
 
@@ -513,7 +551,7 @@ char* parse_operator(
                 if (*cursor == '=') {
                     token -> type = T_BIT_XOR_EQUALS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
             } break;
 
@@ -521,7 +559,7 @@ char* parse_operator(
                 if (*cursor == '=') {
                     token -> type = T_BANGEQUALS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
             } break;
 
@@ -529,7 +567,7 @@ char* parse_operator(
                 if (*cursor == '=') {
                     token -> type = T_EQUALSEQUALS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
             } break;
 
@@ -537,13 +575,13 @@ char* parse_operator(
                 if (*cursor == '=') {
                     token -> type = T_LESSEQUALS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
 
                 if (*cursor == '>') {
                     token -> type = T_BITSHIFT_RIGHT;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
             } break;
 
@@ -552,13 +590,13 @@ char* parse_operator(
                 if (*cursor == '=') {
                     token -> type = T_GREATEREQUALS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
 
                 if (*cursor == '<') {
                     token -> type = T_BITSHIFT_LEFT;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
             } break;
 
@@ -566,13 +604,13 @@ char* parse_operator(
                 if (*cursor == '+') {
                     token -> type = T_PLUSPLUS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
 
                 if (*cursor == '=') {
                     token -> type = T_PLUSEQUALS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
             } break;
 
@@ -580,13 +618,13 @@ char* parse_operator(
                 if (*cursor == '-') {
                     token -> type = T_MINUSMINUS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
 
                 if (*cursor == '=') {
                     token -> type = T_MINUSEQUALS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
             } break;
 
@@ -594,7 +632,7 @@ char* parse_operator(
                 if (*cursor == '=') {
                     token -> type = T_ASTERIXEQUALS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
                 }
             } break;
 
@@ -602,7 +640,13 @@ char* parse_operator(
                 if (*cursor == '=') {
                     token -> type = T_SLASHEQUALS;
                     token -> len = 2;
-                    return cursor;
+                    return ++cursor;
+                }
+
+                if (*cursor == '/') {
+                    while (*cursor != '\n') cursor++;
+                    tokens -> count--;
+                    return ++cursor;
                 }
             } break;
         }
@@ -661,6 +705,16 @@ char* parse_operator(
 
         case '/': {
             token -> type = T_SLASH;
+            token -> len = 1;
+        } break;
+
+        case '&': {
+            token -> type = T_AMPERSAND;
+            token -> len = 1;
+        } break;
+
+        case '%': {
+            token -> type = T_PERCENT;
             token -> len = 1;
         } break;
     }

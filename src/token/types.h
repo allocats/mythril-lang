@@ -17,6 +17,7 @@
     TOKEN(T_LEFTBRACE)      \
     TOKEN(T_RIGHTBRACE)     \
                             \
+    TOKEN(T_PERCENT)        \
     TOKEN(T_SLASH)          \
     TOKEN(T_SLASHEQUALS)    \
                             \
@@ -76,32 +77,44 @@
                             \
     TOKEN(T_CHAR)           \
                             \
-    TOKEN(T_BOOL8)          \
-    TOKEN(T_BOOL32)         \
+    TOKEN(T_BOOL)           \
                             \
     TOKEN(T_USIZE)          \
     TOKEN(T_SSIZE)          \
                             \
     TOKEN(T_VOID)           \
+    TOKEN(T_LET)            \
     TOKEN(T_CONST)          \
+    TOKEN(T_STATIC)         \
+                            \
+    TOKEN(T_TRUE)           \
+    TOKEN(T_FALSE)          \
                             \
     TOKEN(T_NULL)           \
     TOKEN(T_NULLPTR)        \
+    TOKEN(T_UNINIT)         \
+                            \
+    TOKEN(T_IMPORT)         \
+    TOKEN(T_MODULE)         \
                             \
     TOKEN(T_FUNCTION)       \
     TOKEN(T_STRUCT)         \
     TOKEN(T_ENUM)           \
+    TOKEN(T_IMPL)           \
+                            \
+    TOKEN(T_SELF)           \
                             \
     TOKEN(T_COND_AND)       \
     TOKEN(T_COND_OR)        \
                             \
     TOKEN(T_FOR)            \
-    TOKEN(T_IN)             \
+    TOKEN(T_IF)             \
     TOKEN(T_WHILE)          \
                             \
-    TOKEN(T_SYSCALL)        \
     TOKEN(T_RETURN)         \
-    TOKEN(T_EOF) 
+    TOKEN(T_EOF)            \
+                            \
+    TOKEN(TOKEN_TYPE_COUNT)
 
 #define GENERATE_ENUM(ENUM) ENUM,
 #define GENERATE_STRING(STRING) #STRING,

@@ -12,16 +12,19 @@ target executable mythril {
         src/arena/arena_generic.c
 
         src/ast/ast.c
-        src/ast/ast_create.c
-        src/ast/ast_print.c
+        src/ast/parser/parser.c
+
+        src/hash/hash.c
 
         src/lexer/lexer.c
 
-        src/semantic/semantic.c
+        src/semantics/semantics.c
 
         src/symbols/symbols.c
         
         src/token/token.c
+
+        src/type_system/type_system.c
 
         src/main.c
     ]
