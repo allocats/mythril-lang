@@ -4,13 +4,12 @@
 #include <unistd.h>
 
 #include "arena/arena.h"
-#include "ast_new/ast.h"
+#include "ast/ast.h"
 #include "ast/types.h"
 #include "lexer/lexer.h"
-#include "semantic/semantic.h"
-#include "symbols/symbols.h"
-#include "symbols/types.h"
+#include "semantics/semantics.h"
 #include "token/token.h"
+#include "utils/ansi_codes.h"
 #include "utils/macros.h"
 #include "utils/types.h"
 
@@ -50,6 +49,7 @@ i32 main(i32 argc, char* argv[]) {
     init_arena(&arena, 65536);
 
     usize len;
+    b32 error = false;
 
     char* buffer = map_file(argv[1], &len);
     if (buffer == nullptr) {
@@ -63,12 +63,32 @@ i32 main(i32 argc, char* argv[]) {
 
     tokens_print(tokens);
 
+    // if (tokens -> had_error) {
+    //     error = true;
+    // }
+
     Program* program = ast_build(&arena, tokens, buffer);
 
-    print_program(program);
+    if (program -> had_error) {
+        error = true;
+    }
 
-    // SymbolTable* global_table = enter_scope(&arena, nullptr);
-    // semantic_analyze_program(program, &arena, global_table);
+    print_program(program);
+    
+    SemanticCtx* ctx = analyze_program(program);
+
+    if (error) {
+        fprintf(
+            stderr, 
+            "compilation" 
+            ANSI_BOLD ANSI_RED " failed" ANSI_RESET 
+            "!\n"
+        );
+
+        return 1;
+    }
+
+    printf("\ncompiled" ANSI_BOLD ANSI_GREEN " successfully" ANSI_RESET "!\n");
 
     munmap(buffer, len);
 }

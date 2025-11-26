@@ -77,8 +77,7 @@
                             \
     TOKEN(T_CHAR)           \
                             \
-    TOKEN(T_BOOL8)          \
-    TOKEN(T_BOOL32)         \
+    TOKEN(T_BOOL)           \
                             \
     TOKEN(T_USIZE)          \
     TOKEN(T_SSIZE)          \
@@ -112,7 +111,6 @@
     TOKEN(T_IF)             \
     TOKEN(T_WHILE)          \
                             \
-    TOKEN(T_SYSCALL)        \
     TOKEN(T_RETURN)         \
     TOKEN(T_EOF)            \
                             \

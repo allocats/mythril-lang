@@ -4,20 +4,20 @@
 
 #include "types.h"
 
-u64 hash_fnv1a(const char* s, u32 len);
+#include "../arena/arena.h"
 
-SymbolTable* enter_scope(ArenaAllocator* arena, SymbolTable* current);
-SymbolTable* exit_scope(SymbolTable* current);
+SymbolTable* create_symtable(ArenaAllocator* arena);
 
-void add_symbol(SymbolTable* table, Symbol symbol);
+Symbol* create_symbol(ArenaAllocator* arena, SymbolKind kind, const char* name, usize len, u64 hash);
 
-Symbol* lookup_symbol_all(SymbolTable* table, u64 hash);
-Symbol* lookup_symbol_scope(SymbolTable* table, u64 hash);
+Symbol* symbol_lookup(SymbolTable* syms, u64 hash);
+Symbol* symbol_lookup_scope(SymbolTable* syms, u64 hash);
 
-i32 is_builtin_function(u64 hash);
+void define_symbol(ArenaAllocator* arena, SymbolTable* table, Symbol* sym);
 
-#define NOT_BUILTIN     -1
-#define BUILTIN_SYSCALL 0
-#define BUILTIN_ASM     1
+void scope_enter(ArenaAllocator* arena, SymbolTable* table);
+void scope_exit(SymbolTable* table);
+
+void push_scope(ArenaAllocator* arena, Scope* scope, Symbol* symbol);
 
 #endif // !SYMBOLS_H

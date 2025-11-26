@@ -3,122 +3,54 @@
 #define SYMBOLS_TYPES_H
 
 #include "../ast/types.h"
-#include "../token/types.h"
+#include "../type_system/types.h"
 #include "../utils/types.h"
-
-// Symbol type
-
-#define FOREACH_SYMBOL(SYM) \
-    SYM(S_FUNC)             \
-    SYM(S_PARAM)            \
-    SYM(S_STRUCT)           \
-    SYM(S_CONST)            \
-    SYM(S_VAR)              
 
 #define GENERATE_ENUM(ENUM) ENUM,
 #define GENERATE_STRING(STRING) #STRING,
 
-typedef enum {
-    FOREACH_SYMBOL(GENERATE_ENUM)
-} SymbolType;
-
-static const char* SYMBOL_TYPES_STRINGS[] = {
-    FOREACH_SYMBOL(GENERATE_STRING)
-};
-
-// Symbol scope
-
-#define FOREACH_SCOPE(SCOPE)\
-    SCOPE(SC_GLOBAL)        \
-    SCOPE(SC_LOCAL)         
+#define FOREACH_SYMBOL_KIND(KIND)   \
+    KIND(SYMBOL_VARIABLE)           \
+    KIND(SYMBOL_FUNCTION)           \
+    KIND(SYMBOL_TYPE)
 
 typedef enum {
-    FOREACH_SCOPE(GENERATE_ENUM)
-} SymbolScope;
-
-static const char* SYMBOL_SCOPE_STRINGS[] = {
-    FOREACH_SCOPE(GENERATE_STRING)
-};
-
-// ****
+    FOREACH_SYMBOL_KIND(GENERATE_ENUM)
+} SymbolKind;
 
 typedef struct {
-    char* type_ptr;
-    usize type_len;
-    u32 pointer_depth;
-} TypeInfo;
+    SymbolKind kind;
 
-typedef struct {
-    TypeInfo return_type;
+    const char* name_ptr;
+    usize name_len;
+    u64   name_hash;
 
-    TypeInfo* param_types;
-    usize param_count;
+    Type* type;
 
-    b32 is_defined;
-    b32 is_builtin;
+    AstNode* node;
 
-    AstNode* block;
-} FunctionSymbol;
+    usize scope_depth;
 
-typedef struct {
-    TypeInfo* field_types;
-    usize* field_offsets;
-    usize field_count;
+    b8 is_used;
+    b8 is_const;
 
-    char** field_name_ptrs;
-    usize* field_name_lens;
-
-    usize total_size; // my_struct.size() :p
-} StructSymbol;
-
-typedef struct {
-    TypeInfo type_info;
-
-    union {
-        i64 int_value;
-        f64 float_value;
-
-        struct {
-            char* ptr;
-            usize len;
-        } string_value;
-    } value;
-} ConstSymbol;
-
-typedef struct {
-    TypeInfo type_info;
-    usize stack_offset;
-    b32 is_initialized;
-} VarSymbol;
-
-typedef struct {
-    u64 hash;
-
-    u32 name_len;
-    char* name_ptr;
-
-    SymbolType sym_type;
-    SymbolScope scope;
-
-    usize times_called;
-
-    union {
-        FunctionSymbol  function;
-        ConstSymbol     constant;
-        VarSymbol       variable;
-        VarSymbol       parameter;
-        StructSymbol    structure;
-    } data;
+    ssize stack_offset;
 } Symbol;
 
-typedef struct SymbolTable SymbolTable;
-
-struct SymbolTable {
-    SymbolTable* parent; // nullptr for global scopes
-    Symbol* symbols;
-    usize capacity;
+typedef struct Scope Scope;
+typedef struct Scope {
+    Symbol** symbols;
     usize count;
-    usize scope_depth; // 0 = global, 1 or more = nested
-};
+    usize capacity;
+
+    Scope* parent;
+} Scope;
+
+typedef struct SymbolTable {
+    Scope* current_scope;
+    usize scope_depth;
+
+    ssize current_stack_offset;
+} SymbolTable;
 
 #endif // !SYMBOLS_TYPES_H

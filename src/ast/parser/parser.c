@@ -31,7 +31,7 @@ Token* parser_advance_expect(Parser* p, TokenType type, const char* msg) {
 
     Token* token = &p -> tokens[p -> index++];
     if (token -> type != type) {
-        ast_error(token, p -> buffer, msg);
+        ast_error(token, p, msg);
     }
     return token;
 }
@@ -68,7 +68,7 @@ AstNode* parse_function_decl(Parser* p) {
 
     Token* func_name = parser_advance(p);
     if (func_name -> type != T_IDENTIFIER) {
-        ast_error(func_name, p -> buffer, "Expected function name");
+        ast_error(func_name, p, "Expected function name");
     }
 
     parser_advance_expect(p, T_LEFTPAREN, "Expected '('");
@@ -78,14 +78,6 @@ AstNode* parse_function_decl(Parser* p) {
     while (!parser_check(p, T_RIGHTPAREN)) {
         AstNode* parameter = parse_var_decl(p);
         ast_vec_push(p -> arena, params_vec, parameter);
-
-        if (!parser_check(p, T_COMMA) && !parser_check(p, T_RIGHTPAREN)) {
-            ast_error(parser_peek(p), p -> buffer, "Expected ',' or ')'");
-        }
-
-        if (!parser_check(p, T_COMMA) && !parser_check_ahead(p, T_RIGHTPAREN)) {
-            ast_error(parser_peek(p), p -> buffer, "Expected ',' between parameters");
-        }
 
         if (parser_check(p, T_RIGHTPAREN)) {
             break;
@@ -101,11 +93,11 @@ AstNode* parse_function_decl(Parser* p) {
     TokenType type = return_type -> type;
 
     if (!IS_PRIMITIVE_TYPE(type) && type != T_IDENTIFIER && type != T_VOID) {
-        ast_error(return_type, p -> buffer, "Expected a return type");
+        ast_error(return_type, p, "Expected a return type");
     }
 
     if (!parser_check(p, T_LEFTBRACE)) {
-        ast_error(parser_peek(p), p -> buffer, "Expected '{' for start of function block");
+        ast_error(parser_peek(p), p, "Expected '{' for start of function block");
     }
 
 
@@ -141,8 +133,10 @@ AstVec parse_block(Parser* p) {
     }
 
     if (vec.count == 0) {
-        ast_warn(parser_peek(p), p -> buffer, "Empty block");
+        ast_warn(parser_peek(p), p, "Empty block");
     }
+
+    parser_advance_expect(p, T_RIGHTBRACE, "Expected '}'");
 
     return vec;
 }
@@ -182,12 +176,7 @@ AstNode* parse_statement(Parser* p) {
         } break;
 
         case T_RETURN: {
-
-        } break;
-
-        // builtin functions 
-        case T_SYSCALL: {
-
+            statement = parse_return(p);
         } break;
 
         default: {
@@ -214,7 +203,7 @@ AstNode* parse_var_decl(Parser* p) {
     Token* type_tok = parser_advance(p);
 
     if (type_tok -> type != T_IDENTIFIER && !IS_PRIMITIVE_TYPE(type_tok -> type)) {
-        ast_error(type_tok, p -> buffer, "Expected type");
+        ast_error(type_tok, p, "Expected type");
     }
 
     usize pointer_depth = 0;
@@ -246,7 +235,7 @@ AstNode* parse_const_decl(Parser* p) {
     Token* type_tok = parser_advance(p);
 
     if (type_tok -> type != T_IDENTIFIER && !IS_PRIMITIVE_TYPE(type_tok -> type)) {
-        ast_error(type_tok, p -> buffer, "Expected type");
+        ast_error(type_tok, p, "Expected type");
     }
 
     usize pointer_depth = 0;
@@ -404,7 +393,7 @@ AstNode* parse_primary(Parser* p) {
         return parse_postfix(p, expr);
     }
 
-    ast_error(&current, p -> buffer, "Expected expression!");
+    ast_error(&current, p, "Expected expression!");
     MEOW_UNREACHABLE("Should have exited in ast_error()");
 }
 
@@ -497,6 +486,24 @@ AstNode* parse_postfix(Parser* p, AstNode* expr) {
 
     return expr;
 }
+
+AstNode* parse_return(Parser* p) {
+    parser_advance(p);
+
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+    AstNode* expr = nullptr;
+
+    if (!parser_check(p, T_SEMICOLON)) {
+        expr = parse_expr(p);
+    }
+
+    node -> kind = AST_RETURN;
+
+    node -> return_stmt.expression = expr;
+
+    return node;
+}
+
 
 
 /*

@@ -93,6 +93,11 @@ AstNode* parse_primary(Parser* p);
 AstNode* parse_postfix(Parser* p, AstNode* expr);
 
 /*
+*
+*/
+AstNode* parse_return(Parser* p);
+
+/*
 *   Precendence helper functions
 */
 

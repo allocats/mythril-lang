@@ -11,7 +11,9 @@ typedef struct {
     Token* tokens;
     usize count;
     usize index;
+
     const char* buffer; // Buffer for error handling
+    b32 had_error;
 } Parser;
 
 #define UNARY_PRECEDENCE 12

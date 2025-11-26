@@ -34,8 +34,8 @@ void error(
         p++;
     }
 
-    fprintf(stderr, "Found error %zu:%zu", row, col);
-    exit(1);
+    fprintf(stderr, "Found error %zu:%zu\n\n", row, col);
+    // exit(1);
 }
 
 [[gnu::always_inline]]
@@ -89,20 +89,10 @@ char* parse_word(
     switch (*start) {
         case 'b': {
             if (len == sizeof("bool") - 1 && strncmp(start, "bool", len) == 0) {
-                token -> type = T_BOOL8;
+                token -> type = T_BOOL;
                 break;
             }
             
-            if (len == sizeof("b8") - 1 && strncmp(start, "b8", len) == 0) {
-                token -> type = T_BOOL8;
-                break;
-            }
-
-            if (len == sizeof("b32") - 1 && strncmp(start, "b32", len) == 0) {
-                token -> type = T_BOOL32;
-                break;
-            }
-
             token -> type = T_IDENTIFIER;
         } break;
 
@@ -279,10 +269,10 @@ char* parse_word(
                 break;
             }
 
-            if (len == sizeof("syscall") - 1 && strncmp(start, "syscall", len) == 0) {
-                token -> type = T_SYSCALL;
-                break;
-            }
+            // if (len == sizeof("syscall") - 1 && strncmp(start, "syscall", len) == 0) {
+            //     token -> type = T_SYSCALL;
+            //     break;
+            // }
 
             token -> type = T_IDENTIFIER;
         } break;
@@ -343,6 +333,11 @@ char* parse_delim(
     token -> len = 1;
 
     switch (*cursor) {
+        case '\0': {
+            token -> type = T_EOF;
+            return cursor;
+        } break;
+
         case ';': {
             // if (stack -> top != -1) {
             //     MEOW_ERROR("Missing closing delimiter");
