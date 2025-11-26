@@ -14,6 +14,8 @@ target executable mythril {
         src/ast/ast.c
         src/ast/parser/parser.c
 
+        src/codegen/codegen.c
+
         src/hash/hash.c
 
         src/lexer/lexer.c

@@ -1,4 +1,6 @@
 #include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -6,6 +8,7 @@
 #include "arena/arena.h"
 #include "ast/ast.h"
 #include "ast/types.h"
+#include "codegen/codegen.h"
 #include "lexer/lexer.h"
 #include "semantics/semantics.h"
 #include "token/token.h"
@@ -87,6 +90,19 @@ i32 main(i32 argc, char* argv[]) {
 
         return 1;
     }
+
+    codegen(program, ctx);
+
+    char cmd_buf[15 + strlen(argv[1])];
+    char* start = strrchr(argv[1], '/');
+    char* end = strrchr(start, '.');
+
+    sprintf(cmd_buf, "ld output.o -o .%.*s", (int) (end - start), start);
+
+    system("nasm -f elf64 output.asm -o output.o");
+    system(cmd_buf);
+
+    system("rm output.asm output.o");
 
     printf("\ncompiled" ANSI_BOLD ANSI_GREEN " successfully" ANSI_RESET "!\n");
 
