@@ -1,6 +1,6 @@
 #pragma once
-#ifndef MYTHRIL_LEXER_TYPES_H
-#define MYTHRIL_LEXER_TYPES_H
+#ifndef LEXER_TYPES_H
+#define LEXER_TYPES_H
 
 #include "../utils/types.h"
 
@@ -11,12 +11,13 @@
 #define IS_WHITESPACE(c) (char_map[(unsigned char)(c)] & 16)
 #define IS_STRING_DELIMS(c) (char_map[(unsigned char)(c)] & 32)
 
+#define DELIM_STACK_MAX 256 
+
 static const u8 char_map[256] = {
     ['0' ... '9'] = 1,
 
     ['a' ... 'z'] = 2,
     ['A' ... 'Z'] = 2,
-    ['_'] = 2,
     
     ['&'] = 4,
     ['|'] = 4,
@@ -54,4 +55,9 @@ static const u8 char_map[256] = {
     ['\"'] = 32,
 };
 
-#endif // !MYTHRIL_LEXER_TYPES_H
+typedef struct {
+    u8  items[DELIM_STACK_MAX];
+    i32 top;
+} DelimStack;
+
+#endif // !LEXER_TYPES_H

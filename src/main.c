@@ -1,108 +1,105 @@
 #include <fcntl.h>
 #include <stdio.h>
-#include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
 #include "arena/arena.h"
-#include "ast/ast.h"
-#include "ast/types.h"
-#include "codegen/codegen.h"
+#include "diagnostics/diagnostics.h"
+#include "files/types.h"
 #include "lexer/lexer.h"
-#include "semantics/semantics.h"
-#include "utils/ansi_codes.h"
-#include "utils/macros.h"
+#include "mythril/types.h"
+#include "tokens/types.h"
 #include "utils/types.h"
 
 static ArenaAllocator arena = {0};
 
-char* map_file(const char* path, usize* len) {
+void map_file(FileBuffer* file_buffer, char* path) {
     i32 fd = open(path, O_RDONLY);
     if (fd == -1) {
-        MEOW_ERROR("Failed to open file");
-        return nullptr;
+        fprintf(stderr, "Error: Failed to open file '%s'\n", path);
+        exit(1);
     }
 
     struct stat st;
     if (fstat(fd, &st) == -1) {
-        MEOW_ERROR("Failed to stat file");
         close(fd);
-        return nullptr;
+        fprintf(stderr, "Error: Failed to stat file '%s'\n", path);
+        exit(1);
     }
 
-    char* buffer = mmap(NULL, st.st_size + 1, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-    if (buffer == MAP_FAILED) {
-        MEOW_ERROR("Failed to allocate file");
+    usize len = st.st_size + 1;
+
+    char* buffer = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    if (buffer == MAP_FAILED || !buffer) {
         close(fd);
-        return nullptr;
+        fprintf(stderr, "Error: Failed to mmap() file '%s'\n", path);
+        exit(1);
     }
 
-    buffer[st.st_size] = 0;
+    buffer[len - 1] = 0;
 
-    (*len) = st.st_size;
-
-    return buffer;
+    file_buffer -> ptr = buffer;
+    file_buffer -> len = len;
 }
 
 i32 main(i32 argc, char* argv[]) {
-    if (argc != 2) return 1;
-
-    init_arena(&arena, 65536);
-
-    usize len;
-    b32 error = false;
-
-    char* buffer = map_file(argv[1], &len);
-    if (buffer == nullptr) {
-        MEOW_PANIC("Failed to map file");
-    }
-
-    Tokens* tokens = lex_file(&arena, buffer, buffer + len);
-    if (tokens == nullptr) {
-        MEOW_PANIC("Failed to lex file");
-    }
-
-    // if (tokens -> had_error) {
-    //     error = true;
-    // }
-
-    Program* program = ast_build(&arena, tokens, buffer);
-
-    if (program -> had_error) {
-        error = true;
-    }
-
-    // print_program(program);
-    
-    SemanticCtx* ctx = analyze_program(program);
-
-    if (error) {
-        fprintf(
-            stderr, 
-            "compilation" 
-            ANSI_BOLD ANSI_RED " failed" ANSI_RESET 
-            "!\n"
-        );
-
+    if (argc == 1) {
+        fprintf(stderr, "Usage: %s <files>\n", argv[0]);
         return 1;
     }
 
-    codegen(program, ctx);
+    init_arena(&arena, 65536);
 
-    char cmd_buf[15 + strlen(argv[1])];
-    char* start = strrchr(argv[1], '/');
-    char* end = strrchr(start, '.');
+    char** file_paths = argv + 1;
+    u32 file_count = argc - 1;
 
-    sprintf(cmd_buf, "ld output.o -o .%.*s", (int) (end - start), start);
+    FileBuffer buffers[file_count];
 
-    system("nasm -f elf64 output.asm -o output.o");
-    system(cmd_buf);
+    DiagContext diag_ctx = {
+        .arena = &arena,
+        .index = 0,
+        .warning_count = 0,
+        .error_count = 0
+    };
 
-    system("rm output.o");
-    // system("rm output.asm");
+    Tokens tokens = {
+        .tokens = arena_alloc(&arena, sizeof(Token) * 64),
+        .count = 0,
+        .capacity = 64
+    };
 
-    printf("\ncompiled" ANSI_BOLD ANSI_GREEN " successfully" ANSI_RESET "!\n");
+    MythrilContext mythril_ctx = {
+        .arena = &arena,
+        .diag_ctx = &diag_ctx,
+        .tokens = &tokens,
+    };
 
-    munmap(buffer, len);
+    for (u32 i = 0; i < file_count; i++) {
+        map_file(&buffers[i], file_paths[i]);
+
+        diag_ctx.path = argv[i];
+        diag_ctx.source_buffer = buffers[i].ptr;
+
+        mythril_ctx.buffer_start = buffers[i].ptr;
+        mythril_ctx.buffer_end = buffers[i].ptr + buffers[i].len;
+
+        tokenize(&mythril_ctx);
+    }
+
+    i32 exit_code = 0; 
+
+    if (diag_ctx.error_count == 0) {
+        // codegen
+        exit_code = 0;
+    } else {
+        // compilation failed
+        exit_code = 1;
+    }
+
+    for (u32 i = 0; i < file_count; i++) {
+        munmap(buffers[i].ptr, buffers[i].len);
+    }
+
+    return exit_code;
 }

@@ -6,8 +6,7 @@
 *
 *   File structure: 
 *       1. Primitive types
-*       2. X-Macro helper
-* 
+*
 */
 
 
@@ -44,14 +43,5 @@ typedef long double f128;
 
 typedef size_t      usize;
 typedef ssize_t     ssize;
-
-/*
-*
-*   1. Primitive type aliases
-*
-*/
-
-#define GENERATE_ENUM(ENUM) ENUM,
-#define GENERATE_STRING(STRING) #STRING,
 
 #endif // !TYPES_H

@@ -1,9 +1,9 @@
 #pragma once
-#ifndef HASH_H
-#define HASH_H
+#ifndef MYTHRIL_HASH_H
+#define MYTHRIL_HASH_H
 
 #include "../utils/types.h"
 
-u64 hash_fnv1a(const char* p, const usize len);
+u64 hash_fnv1a(const char* ptr, const usize len);
 
-#endif // !HASH_H
+#endif // !MYTHRIL_HASH_H

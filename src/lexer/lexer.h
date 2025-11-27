@@ -1,10 +1,17 @@
 #pragma once
-#ifndef LEXER_H
-#define LEXER_H
+#ifndef MYTHRIL_LEXER_H
+#define MYTHRIL_LEXER_H
 
-#include "../arena/arena.h"
-#include "../token/token.h"
+#include "types.h"
 
-Tokens* lex_file(ArenaAllocator* arena, char* buffer, char* end);
+#include "../mythril/types.h"
 
-#endif //!LEXER_H
+void tokenize(MythrilContext* ctx);
+
+char* parse_word(MythrilContext* ctx, char* cursor);
+char* parse_number(MythrilContext* ctx, char* cursor);
+char* parse_operator(MythrilContext* ctx, char* cursor);
+char* parse_delimiter(MythrilContext* ctx, char* cursor);
+char* parse_string_literal(MythrilContext* ctx, char* cursor);
+
+#endif // !MYTHRIL_LEXER_H
