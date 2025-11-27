@@ -102,12 +102,15 @@ void gen_function(Codegen* ctx, AstNode* node) {
     
     for (usize i = 0; i < node -> function.params.count && i < 6; i++) {
         AstNode* param = node -> function.params.nodes[i];
+
         Symbol* sym = symbol_lookup(
             ctx -> sem_ctx -> symbols,
             param -> var_decl.identifier -> identifier.hash
         );
 
-        ctx -> stack_offset -= 8;
+        Type* type = sym -> type;
+
+        ctx -> stack_offset -= type -> align;
         sym -> stack_offset = ctx -> stack_offset;
 
         fprintf(out, "    mov [rbp%ld], %s\n", sym -> stack_offset, arg_registers[i]);
@@ -119,7 +122,7 @@ void gen_function(Codegen* ctx, AstNode* node) {
 
     fprintf(
         out,
-        ".end_%.*s:\n",
+        "\n.end_%.*s:\n",
         (i32) node -> function.identifier -> identifier.len,
         node -> function.identifier -> identifier.ptr
     );
@@ -240,6 +243,27 @@ void gen_fn_call(Codegen* ctx, AstNode* node) {
         gen_syscall(ctx, node);
         return;
     }
+
+    FILE* out = ctx -> output;
+
+    for (usize i = 0; i < node -> fn_call.args.count; i++) {
+        gen_expr(ctx, node -> fn_call.args.nodes[i]);
+
+        fprintf(out, "    push rax\n\n");
+    }
+
+    for (i64 i = node -> fn_call.args.count - 1; i >= 0; i--) {
+        if (i == 0) {
+            fprintf(out, "    pop rax\n");
+        } else if (i <= 6) {
+            fprintf(out, "    pop %s\n", arg_registers[i - 1]);
+        }
+    }
+
+    usize len = node -> fn_call.identifier -> identifier.len;
+    const char* ptr = node -> fn_call.identifier -> identifier.ptr;
+
+    fprintf(out, "    call %.*s\n", (i32) len, ptr);
 }
 
 void gen_syscall(Codegen* ctx, AstNode* node) {
@@ -261,7 +285,7 @@ void gen_syscall(Codegen* ctx, AstNode* node) {
         }
     }
 
-    fprintf(out, "    syscall\n\n");
+    fprintf(out, "    syscall\n");
 }
 
 void gen_data_section(Codegen *ctx) {

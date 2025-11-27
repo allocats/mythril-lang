@@ -11,7 +11,6 @@
 #include "codegen/codegen.h"
 #include "lexer/lexer.h"
 #include "semantics/semantics.h"
-#include "token/token.h"
 #include "utils/ansi_codes.h"
 #include "utils/macros.h"
 #include "utils/types.h"
@@ -64,8 +63,6 @@ i32 main(i32 argc, char* argv[]) {
         MEOW_PANIC("Failed to lex file");
     }
 
-    tokens_print(tokens);
-
     // if (tokens -> had_error) {
     //     error = true;
     // }
@@ -76,7 +73,7 @@ i32 main(i32 argc, char* argv[]) {
         error = true;
     }
 
-    print_program(program);
+    // print_program(program);
     
     SemanticCtx* ctx = analyze_program(program);
 
@@ -102,7 +99,8 @@ i32 main(i32 argc, char* argv[]) {
     system("nasm -f elf64 output.asm -o output.o");
     system(cmd_buf);
 
-    system("rm output.asm output.o");
+    system("rm output.o");
+    // system("rm output.asm");
 
     printf("\ncompiled" ANSI_BOLD ANSI_GREEN " successfully" ANSI_RESET "!\n");
 

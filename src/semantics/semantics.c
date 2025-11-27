@@ -111,7 +111,7 @@ void analyze_function(SemanticCtx* ctx, AstNode* fn) {
             param -> var_decl.identifier -> identifier.len,
             param -> var_decl.identifier -> identifier.hash
         );
-        
+
         param_sym -> type = resolve_type(ctx, param -> var_decl.type);
 
         define_symbol(ctx -> arena, ctx -> symbols, param_sym); 
