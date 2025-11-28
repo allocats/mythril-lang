@@ -5,14 +5,14 @@
 #include "../arena/arena.h"
 #include "../utils/types.h"
 
-#define MAX_DIAGNOSITCS 32
+#define MAX_DIAGNOSTICS 32
 
 typedef enum {
     DIAGNOSTIC_ERROR,
     DIAGNOSTIC_WARN,
     DIAGNOSTIC_NOTE
 } DiagnosticLevel;
-
+ 
 typedef struct {
     const char* path; 
     const char* source_buffer;
@@ -20,7 +20,7 @@ typedef struct {
     usize line;
     usize column;
 
-    char* pointer; // start of problematic code
+    const char* pointer; // start of problematic code
     usize length;
 } SourceLocation;
 
@@ -37,11 +37,14 @@ typedef struct {
     const char* path;
     const char* source_buffer;
 
-    Diagnostic nodes[MAX_DIAGNOSITCS];
+    Diagnostic nodes[MAX_DIAGNOSTICS];
     u32 index;
 
     u32 warning_count;
     u32 error_count;
+    u32 note_count;
+
+    b8 stdout_supports_colours;
 } DiagContext;
 
 #endif // !MYTHRIL_DIAGNOSTICS_TYPES_H

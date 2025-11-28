@@ -1,6 +1,7 @@
 #include "lexer.h"
 #include "types.h"
 
+#include "../diagnostics/diagnostics.h"
 #include "../utils/types.h"
 #include "../utils/vec.h"
 
@@ -268,7 +269,7 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
             }
 
             token -> kind = TOK_IDENTIFIER;
-        }
+        } break;
 
         case 'w': {
             if (word_match("while", len, start)) {
@@ -277,7 +278,11 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
             }
 
             token -> kind = TOK_IDENTIFIER;
-        }
+        } break;
+
+        default: {
+            token -> kind = TOK_IDENTIFIER;
+        } break;
     }
 
     return cursor;
@@ -361,4 +366,6 @@ char* parse_operator(MythrilContext* ctx, char* cursor) {
 
     token -> lexeme = start;
     token -> length = len;
+
+    // todo: operators
 }

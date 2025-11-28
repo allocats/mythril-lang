@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -60,11 +61,16 @@ i32 main(i32 argc, char* argv[]) {
         .arena = &arena,
         .index = 0,
         .warning_count = 0,
-        .error_count = 0
+        .error_count = 0,
+        .stdout_supports_colours = false
     };
 
+    if (isatty(STDOUT_FILENO)) {
+        diag_ctx.stdout_supports_colours = true;
+    }
+
     Tokens tokens = {
-        .tokens = arena_alloc(&arena, sizeof(Token) * 64),
+        .items = arena_alloc(&arena, sizeof(Token) * 64),
         .count = 0,
         .capacity = 64
     };
@@ -78,7 +84,7 @@ i32 main(i32 argc, char* argv[]) {
     for (u32 i = 0; i < file_count; i++) {
         map_file(&buffers[i], file_paths[i]);
 
-        diag_ctx.path = argv[i];
+        diag_ctx.path = file_paths[i];
         diag_ctx.source_buffer = buffers[i].ptr;
 
         mythril_ctx.buffer_start = buffers[i].ptr;
@@ -90,10 +96,11 @@ i32 main(i32 argc, char* argv[]) {
     i32 exit_code = 0; 
 
     if (diag_ctx.error_count == 0) {
-        // codegen
+        // codegen()
         exit_code = 0;
+        printf("compiled successfully\n\n");
     } else {
-        // compilation failed
+        diagnostics_print_all(&diag_ctx);
         exit_code = 1;
     }
 
