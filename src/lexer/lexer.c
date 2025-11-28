@@ -399,6 +399,7 @@ char* parse_operator(MythrilContext* ctx, char* cursor) {
         
         if (c0 == '+' && c1 == '+') { token -> kind = TOK_PLUS_PLUS; return cursor; }
         if (c0 == '-' && c1 == '-') { token -> kind = TOK_MINUS_MINUS; return cursor; }
+        if (c0 == '-' && c1 == '>') { token -> kind = TOK_ARROW; return cursor; }
         if (c0 == '<' && c1 == '<') { token -> kind = TOK_BIT_SHIFT_LEFT; return cursor; }
         if (c0 == '>' && c1 == '>') { token -> kind = TOK_BIT_SHIFT_RIGHT; return cursor; }
         if (c0 == '&' && c1 == '&') { token -> kind = TOK_COND_AND; return cursor; }
@@ -548,6 +549,11 @@ char* parse_invalid_tokens(MythrilContext* ctx, char* cursor) {
     token -> kind = TOK_ERROR;
     token -> lexeme = start;
     token -> length = len;
+
+    DiagContext* diag_ctx = ctx -> diag_ctx;
+    SourceLocation location = source_location_from_token(diag_ctx -> path, ctx -> buffer_start, token);
+
+    diag_error(diag_ctx, location, "unknown token found '%.*s'", token -> length, token -> lexeme); 
 
     return cursor;
 }
