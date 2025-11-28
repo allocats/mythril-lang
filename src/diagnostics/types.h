@@ -44,7 +44,7 @@ typedef struct {
     u32 error_count;
     u32 note_count;
 
-    b8 stdout_supports_colours;
+    b8 stderr_supports_colours;
 } DiagContext;
 
 #endif // !MYTHRIL_DIAGNOSTICS_TYPES_H

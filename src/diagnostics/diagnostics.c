@@ -199,7 +199,7 @@ const char* level_strings(DiagnosticLevel level) {
 }
 
 void diagnostics_print(DiagContext* ctx, Diagnostic* diag) {
-    b8 colour_support = ctx -> stdout_supports_colours;
+    b8 colour_support = ctx -> stderr_supports_colours;
 
     const char* colour = colour_support ? level_colour(diag -> level) : "";
     const char* reset  = colour_support ? ANSI_RESET : "";
@@ -270,7 +270,7 @@ void diagnostics_print(DiagContext* ctx, Diagnostic* diag) {
 }
 
 void diagnostics_print_all(DiagContext* ctx) {
-    b8 colour_support = ctx -> stdout_supports_colours;
+    b8 colour_support = ctx -> stderr_supports_colours;
     
     for (u32 i = 0; i < ctx -> index; i++) {
         diagnostics_print(ctx, &ctx -> nodes[i]);

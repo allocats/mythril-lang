@@ -62,11 +62,11 @@ i32 main(i32 argc, char* argv[]) {
         .index = 0,
         .warning_count = 0,
         .error_count = 0,
-        .stdout_supports_colours = false
+        .stderr_supports_colours = false
     };
 
-    if (isatty(STDOUT_FILENO)) {
-        diag_ctx.stdout_supports_colours = true;
+    if (isatty(STDERR_FILENO)) {
+        diag_ctx.stderr_supports_colours = true;
     }
 
     Tokens tokens = {
