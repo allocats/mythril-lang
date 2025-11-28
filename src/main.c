@@ -109,10 +109,6 @@ i32 main(i32 argc, char* argv[]) {
         tokenize(&mythril_ctx);
     }
 
-    #ifdef MYTHRIL_DEBUG
-    print_tokens(tokens);
-    #endif /* ifdef MYTHRIL_DEBUG */
-
     if (diag_ctx.error_count == 0) {
         // codegen()
         exit_code = 0;
@@ -121,6 +117,10 @@ i32 main(i32 argc, char* argv[]) {
         diagnostics_print_all(&diag_ctx);
         exit_code = 1;
     }
+
+    #ifdef MYTHRIL_DEBUG
+        print_tokens(tokens);
+    #endif /* ifdef MYTHRIL_DEBUG */
 
 cleanup:
     for (u32 i = 0; i < file_count; i++) {
