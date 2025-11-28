@@ -6,9 +6,13 @@
 
 #define X_TOKENS(X)                 \
     X(TOK_DOT)                      \
+    X(TOK_DOT_DOT)                  \
+    X(TOK_ELLIPSIS)                 \
+                                    \
     X(TOK_ARROW)                    \
     X(TOK_COMMA)                    \
     X(TOK_COLON)                    \
+    X(TOK_COLON_COLON)              \
     X(TOK_SEMI_COLON)               \
                                     \
     X(TOK_LEFT_PAREN)               \

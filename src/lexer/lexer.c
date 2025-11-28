@@ -180,6 +180,11 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
                 break;
             }
 
+            if (word_match("module", len, start)) {
+                token -> kind = TOK_MODULE;
+                break;
+            }
+
             token -> kind = TOK_IDENTIFIER;
         } break;
 
@@ -337,6 +342,13 @@ char* parse_delimiter(MythrilContext* ctx, char* cursor) {
         } break;
 
         case ':': {
+            if (*(cursor) == ':') {
+                token -> length = 2;
+                token -> kind = TOK_COLON_COLON;
+                cursor++;
+                break;
+            }
+
             token -> kind = TOK_COLON;
         } break;
 
@@ -346,10 +358,6 @@ char* parse_delimiter(MythrilContext* ctx, char* cursor) {
 
         case ',': {
             token -> kind = TOK_COMMA;
-        } break;
-
-        case '.': {
-            token -> kind = TOK_DOT;
         } break;
     }
 
@@ -404,6 +412,7 @@ char* parse_operator(MythrilContext* ctx, char* cursor) {
         if (c0 == '>' && c1 == '>') { token -> kind = TOK_BIT_SHIFT_RIGHT; return cursor; }
         if (c0 == '&' && c1 == '&') { token -> kind = TOK_COND_AND; return cursor; }
         if (c0 == '|' && c1 == '|') { token -> kind = TOK_COND_OR; return cursor; }
+        if (c0 == '.' && c1 == '.') { token -> kind = TOK_DOT_DOT; return cursor; }
     }
     
     if (len == 1) {
@@ -421,6 +430,7 @@ char* parse_operator(MythrilContext* ctx, char* cursor) {
             case '^': token -> kind = TOK_BIT_XOR; return cursor;
             case '~': token -> kind = TOK_BIT_NOT; return cursor;
             case '|': token -> kind = TOK_BIT_OR; return cursor;
+            case '.': token -> kind = TOK_DOT; return cursor;
         }
     }
     
@@ -429,8 +439,14 @@ char* parse_operator(MythrilContext* ctx, char* cursor) {
             token -> kind = TOK_BIT_SHIFT_LEFT_EQUALS;
             return cursor;
         }
+
         if (start[0] == '>' && start[1] == '>' && start[2] == '=') {
             token -> kind = TOK_BIT_SHIFT_RIGHT_EQUALS;
+            return cursor;
+        }
+
+        if (start[0] == '.' && start[1] == '.' && start[2] == '.') {
+            token -> kind = TOK_ELLIPSIS;
             return cursor;
         }
     }
