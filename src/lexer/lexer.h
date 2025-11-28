@@ -15,4 +15,7 @@ char* parse_delimiter(MythrilContext* ctx, char* cursor);
 char* parse_string_literal(MythrilContext* ctx, char* cursor);
 char* parse_invalid_tokens(MythrilContext* ctx, char* cursor);
 
+char* skip_single_line_comment(MythrilContext* ctx, char* cursor);
+char* skip_multi_line_comment(MythrilContext* ctx, char* cursor);
+
 #endif // !MYTHRIL_LEXER_H

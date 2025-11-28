@@ -413,6 +413,16 @@ char* parse_operator(MythrilContext* ctx, char* cursor) {
         if (c0 == '&' && c1 == '&') { token -> kind = TOK_COND_AND; return cursor; }
         if (c0 == '|' && c1 == '|') { token -> kind = TOK_COND_OR; return cursor; }
         if (c0 == '.' && c1 == '.') { token -> kind = TOK_DOT_DOT; return cursor; }
+
+        if (c0 == '/' && c1 == '/') { 
+            tokens -> count--;
+            return skip_single_line_comment(ctx, cursor); 
+        }
+
+        if (c0 == '/' && c1 == '*') {
+            tokens -> count--;
+            return skip_multi_line_comment(ctx, cursor);
+        }
     }
     
     if (len == 1) {
@@ -570,6 +580,26 @@ char* parse_invalid_tokens(MythrilContext* ctx, char* cursor) {
     SourceLocation location = source_location_from_token(diag_ctx -> path, ctx -> buffer_start, token);
 
     diag_error(diag_ctx, location, "unknown token found '%.*s'", token -> length, token -> lexeme); 
+
+    return cursor;
+}
+
+char* skip_single_line_comment(MythrilContext* ctx, char* cursor) {
+    while (*cursor != '\n') {
+        cursor++;
+    }
+
+    return cursor;
+}
+
+char* skip_multi_line_comment(MythrilContext* ctx, char* cursor) {
+    while (cursor < ctx -> buffer_end && *cursor != '\0') {
+        if (*cursor == '*' && *(cursor + 1) == '/') {
+            return cursor + 2;
+        }
+
+        cursor++;
+    }
 
     return cursor;
 }
