@@ -25,11 +25,11 @@ $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR):
-	mkdir -p $@
+	@mkdir -p $@
 
 $(BIN_DIR): | $(BUILD_DIR)
-	mkdir -p $@
+	@mkdir -p $@
 
 .PHONY: clean
 clean:
-	rm -rvf $(BUILD_DIR)
+	@rm -rvf $(BUILD_DIR) > /dev/null
