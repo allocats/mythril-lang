@@ -30,6 +30,12 @@ void tokenize(MythrilContext* ctx) {
             cursor = parse_delimiter(ctx, cursor);
         } else if (IS_OPERATOR(c)) {
             cursor = parse_operator(ctx, cursor);
+        } else if (IS_DIGIT(c)) {
+            cursor = parse_number(ctx, cursor);
+        } else if (IS_STRING_DELIMS(c)) {
+            cursor = parse_string_literal(ctx, cursor);
+        } else {
+            cursor = parse_invalid_tokens(ctx, cursor);
         }
     }
 }
@@ -302,6 +308,10 @@ char* parse_delimiter(MythrilContext* ctx, char* cursor) {
     token -> length = 1;
 
     switch (*start) {
+        case '\0': {
+            token -> kind = TOK_EOF;
+        } break;
+
         case '(': {
             token -> kind = TOK_LEFT_PAREN;
         } break;
@@ -359,13 +369,185 @@ char* parse_operator(MythrilContext* ctx, char* cursor) {
     }
 
     const char* end = cursor;
+    const usize len = end - start;
 
-    const usize len = end - cursor;
+    Token* token = &tokens -> items[tokens -> count++];
+    token -> lexeme = start;
+    token -> length = len;
+
+    if (len == 2) {
+        char c0 = start[0];
+        char c1 = start[1];
+        
+        if (c1 == '=') {
+            switch (c0) {
+                case '!': token -> kind = TOK_BANG_EQUALS; return cursor;
+                case '=': token -> kind = TOK_EQUALS_EQUALS; return cursor;
+                case '/': token -> kind = TOK_SLASH_EQUALS; return cursor;
+                case '+': token -> kind = TOK_PLUS_EQUALS; return cursor;
+                case '-': token -> kind = TOK_MINUS_EQUALS; return cursor;
+                case '*': token -> kind = TOK_STAR_EQUALS; return cursor;
+                case '%': token -> kind = TOK_PERCENT_EQUALS; return cursor;
+                case '<': token -> kind = TOK_LESS_THAN_EQUALS; return cursor;
+                case '>': token -> kind = TOK_GREATER_THAN_EQUALS; return cursor;
+                case '&': token -> kind = TOK_BIT_AND_EQUALS; return cursor;
+                case '^': token -> kind = TOK_BIT_XOR_EQUALS; return cursor;
+                case '~': token -> kind = TOK_BIT_NOT_EQUALS; return cursor;
+                case '|': token -> kind = TOK_BIT_OR_EQUALS; return cursor;
+            }
+        }
+        
+        if (c0 == '+' && c1 == '+') { token -> kind = TOK_PLUS_PLUS; return cursor; }
+        if (c0 == '-' && c1 == '-') { token -> kind = TOK_MINUS_MINUS; return cursor; }
+        if (c0 == '<' && c1 == '<') { token -> kind = TOK_BIT_SHIFT_LEFT; return cursor; }
+        if (c0 == '>' && c1 == '>') { token -> kind = TOK_BIT_SHIFT_RIGHT; return cursor; }
+        if (c0 == '&' && c1 == '&') { token -> kind = TOK_COND_AND; return cursor; }
+        if (c0 == '|' && c1 == '|') { token -> kind = TOK_COND_OR; return cursor; }
+    }
+    
+    if (len == 1) {
+        switch (*start) {
+            case '!': token -> kind = TOK_BANG; return cursor;
+            case '=': token -> kind = TOK_EQUALS; return cursor;
+            case '%': token -> kind = TOK_PERCENT; return cursor;
+            case '/': token -> kind = TOK_SLASH; return cursor;
+            case '+': token -> kind = TOK_PLUS; return cursor;
+            case '-': token -> kind = TOK_MINUS; return cursor;
+            case '*': token -> kind = TOK_STAR; return cursor;
+            case '<': token -> kind = TOK_LESS_THAN; return cursor;
+            case '>': token -> kind = TOK_GREATER_THAN; return cursor;
+            case '&': token -> kind = TOK_AMPERSAND; return cursor;
+            case '^': token -> kind = TOK_BIT_XOR; return cursor;
+            case '~': token -> kind = TOK_BIT_NOT; return cursor;
+            case '|': token -> kind = TOK_BIT_OR; return cursor;
+        }
+    }
+    
+    if (len == 3) {
+        if (start[0] == '<' && start[1] == '<' && start[2] == '=') {
+            token -> kind = TOK_BIT_SHIFT_LEFT_EQUALS;
+            return cursor;
+        }
+        if (start[0] == '>' && start[1] == '>' && start[2] == '=') {
+            token -> kind = TOK_BIT_SHIFT_RIGHT_EQUALS;
+            return cursor;
+        }
+    }
+
+    token -> kind = TOK_ERROR;
+
+    DiagContext* diag_ctx = ctx -> diag_ctx;
+    SourceLocation location = source_location_from_token(diag_ctx -> path, ctx -> buffer_start, token);
+
+    diag_error(diag_ctx, location, "unknown token found '%.*s'", token -> length, token -> lexeme); 
+
+    return cursor;
+}
+
+char* parse_number(MythrilContext* ctx, char* cursor) {
+    Tokens* tokens = ctx -> tokens;
+    ArenaAllocator* arena = ctx -> arena;
+
+    extend_vec(tokens, arena);
+
+    const char* start = cursor;
+
+    TokenKind kind = TOK_LITERAL_NUMBER;
+
+    while (IS_DIGIT(*cursor)) {
+        cursor++;
+    }
+
+    if (*cursor == '.') {
+        if (IS_DIGIT(*(cursor + 1))) {
+            kind = TOK_LITERAL_FLOAT;
+            cursor++;
+
+            while (IS_DIGIT(*cursor)) {
+                cursor++;
+            }
+        }
+    } 
+
+    const char* end = cursor;
+    const usize len = end - start;
 
     Token* token = &tokens -> items[tokens -> count++];
 
     token -> lexeme = start;
     token -> length = len;
+    token -> kind = kind;
 
-    // todo: operators
+    return cursor;
+}
+
+char* parse_string_literal(MythrilContext* ctx, char* cursor) {
+    Tokens* tokens = ctx -> tokens;
+    ArenaAllocator* arena = ctx -> arena;
+
+    extend_vec(tokens, arena);
+
+    Token* opening_delimiter = &tokens -> items[tokens -> count++];
+
+    opening_delimiter -> kind = TOK_STRING_DELIM;
+    opening_delimiter -> lexeme = cursor;
+    opening_delimiter -> length = 1;
+
+    const char* start = ++cursor;
+
+    while (!IS_STRING_DELIMS(*cursor)) {
+        cursor++;
+
+        if (*(cursor - 1) == '\\' && *cursor == '\"') {
+            cursor++;
+        }
+    }
+
+    const char* end = cursor;
+    const usize len = end - start;
+
+    Token* token = &tokens -> items[tokens -> count++];
+
+    token -> kind = TOK_LITERAL_STRING;
+    token -> lexeme = start;
+    token -> length = len;
+
+    Token* closing_delimiter = &tokens -> items[tokens -> count++];
+
+    closing_delimiter -> kind = TOK_STRING_DELIM;
+    closing_delimiter -> lexeme = cursor++;
+    closing_delimiter -> length = 1;
+
+    return cursor;
+}
+
+char* parse_invalid_tokens(MythrilContext* ctx, char* cursor) {
+    Tokens* tokens = ctx -> tokens;
+    ArenaAllocator* arena = ctx -> arena;
+
+    extend_vec(tokens, arena);
+
+    const char* start = ++cursor;
+
+    while (
+        !IS_WHITESPACE(*cursor) && 
+        !IS_DELIMITER(*cursor) &&
+        !IS_ALPHA(*cursor) &&
+        !IS_DIGIT(*cursor) && 
+        !IS_OPERATOR(*cursor) &&
+        !IS_STRING_DELIMS(*cursor)
+    ) {
+        cursor++;
+    }
+
+    const char* end = cursor++;
+    const usize len = end - start;
+
+    Token* token = &tokens -> items[tokens -> count++];
+
+    token -> kind = TOK_ERROR;
+    token -> lexeme = start;
+    token -> length = len;
+
+    return cursor;
 }

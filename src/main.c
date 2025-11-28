@@ -11,7 +11,7 @@
 #include "files/types.h"
 #include "lexer/lexer.h"
 #include "mythril/types.h"
-#include "tokens/types.h"
+#include "tokens/tokens.h"
 #include "utils/types.h"
 
 static ArenaAllocator arena = {0};
@@ -109,10 +109,14 @@ i32 main(i32 argc, char* argv[]) {
         tokenize(&mythril_ctx);
     }
 
+    #ifdef MYTHRIL_DEBUG
+    print_tokens(tokens);
+    #endif /* ifdef MYTHRIL_DEBUG */
+
     if (diag_ctx.error_count == 0) {
         // codegen()
         exit_code = 0;
-        printf("compiled successfully\n\n");
+        printf("\ncompiled successfully\n");
     } else {
         diagnostics_print_all(&diag_ctx);
         exit_code = 1;

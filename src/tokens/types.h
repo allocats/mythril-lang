@@ -18,8 +18,11 @@
     X(TOK_LEFT_BRACE)               \
     X(TOK_RIGHT_BRACE)              \
                                     \
+    X(TOK_STRING_DELIM)             \
+                                    \
     X(TOK_AMPERSAND)                \
     X(TOK_PERCENT)                  \
+    X(TOK_PERCENT_EQUALS)           \
                                     \
     X(TOK_STAR)                     \
     X(TOK_STAR_EQUALS)              \
@@ -67,6 +70,7 @@
     X(TOK_IDENTIFIER)               \
                                     \
     X(TOK_LITERAL_NUMBER)           \
+    X(TOK_LITERAL_FLOAT)            \
     X(TOK_LITERAL_STRING)           \
                                     \
     X(TOK_UINT_8)                   \

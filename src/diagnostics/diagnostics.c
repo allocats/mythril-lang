@@ -1,7 +1,6 @@
 #include "diagnostics.h"
 #include "types.h"
 
-#include "../mythril/types.h"
 #include "../tokens/types.h"
 #include "../utils/ansi_codes.h"
 

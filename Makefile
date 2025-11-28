@@ -1,5 +1,5 @@
 CC      = clang
-CFLAGS  = -Wall -Wextra -march=native
+CFLAGS  = -Wall -Wextra -march=native -DMYTHRIL_DEBUG
 
 SRC_DIR   = src
 BUILD_DIR = build
@@ -11,7 +11,8 @@ SRCS = $(wildcard $(SRC_DIR)/*.c) 				\
        $(wildcard $(SRC_DIR)/arena/*.c) 		\
        $(wildcard $(SRC_DIR)/diagnostics/*.c) 	\
        $(wildcard $(SRC_DIR)/hash/*.c) 			\
-       $(wildcard $(SRC_DIR)/lexer/*.c)
+       $(wildcard $(SRC_DIR)/lexer/*.c)			\
+       $(wildcard $(SRC_DIR)/tokens/*.c)
 
 OBJECTS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
