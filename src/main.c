@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -15,33 +16,40 @@
 
 static ArenaAllocator arena = {0};
 
-void map_file(FileBuffer* file_buffer, char* path) {
+i32 map_file(FileBuffer* file_buffer, char* path) {
     i32 fd = open(path, O_RDONLY);
     if (fd == -1) {
         fprintf(stderr, "Error: Failed to open file '%s'\n", path);
-        exit(1);
+        fprintf(stderr, "compilation failed\n");
+        return -1;
     }
 
     struct stat st;
     if (fstat(fd, &st) == -1) {
         close(fd);
         fprintf(stderr, "Error: Failed to stat file '%s'\n", path);
-        exit(1);
+        fprintf(stderr, "compilation failed\n");
+        return -1;
     }
 
     usize len = st.st_size + 1;
 
     char* buffer = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+
     if (buffer == MAP_FAILED || !buffer) {
         close(fd);
         fprintf(stderr, "Error: Failed to mmap() file '%s'\n", path);
-        exit(1);
+        fprintf(stderr, "compilation failed\n");
+        return -1;
     }
 
     buffer[len - 1] = 0;
 
     file_buffer -> ptr = buffer;
     file_buffer -> len = len;
+    file_buffer -> needs_free = true;
+
+    return 0;
 }
 
 i32 main(i32 argc, char* argv[]) {
@@ -52,10 +60,13 @@ i32 main(i32 argc, char* argv[]) {
 
     init_arena(&arena, 65536);
 
+    i32 exit_code = 0;
+
     char** file_paths = argv + 1;
     u32 file_count = argc - 1;
 
     FileBuffer buffers[file_count];
+    memset(buffers, 0, sizeof(buffers));
 
     DiagContext diag_ctx = {
         .arena = &arena,
@@ -82,7 +93,12 @@ i32 main(i32 argc, char* argv[]) {
     };
 
     for (u32 i = 0; i < file_count; i++) {
-        map_file(&buffers[i], file_paths[i]);
+        i32 ok = map_file(&buffers[i], file_paths[i]);
+
+        if (ok == -1) {
+            exit_code = 1;
+            goto cleanup;
+        }
 
         diag_ctx.path = file_paths[i];
         diag_ctx.source_buffer = buffers[i].ptr;
@@ -93,8 +109,6 @@ i32 main(i32 argc, char* argv[]) {
         tokenize(&mythril_ctx);
     }
 
-    i32 exit_code = 0; 
-
     if (diag_ctx.error_count == 0) {
         // codegen()
         exit_code = 0;
@@ -104,8 +118,11 @@ i32 main(i32 argc, char* argv[]) {
         exit_code = 1;
     }
 
+cleanup:
     for (u32 i = 0; i < file_count; i++) {
-        munmap(buffers[i].ptr, buffers[i].len);
+        if (buffers[i].needs_free) {
+            munmap(buffers[i].ptr, buffers[i].len);
+        }
     }
 
     return exit_code;
