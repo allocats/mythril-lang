@@ -40,6 +40,62 @@ static void parser_recover_sync(Parser* p) {
     }
 }
 
+static void parser_error_at_current(
+    MythrilContext* ctx, 
+    Parser* p,
+    const char* message,
+    const char* help
+) {
+    SourceLocation location = source_location_from_token(
+        p->path,
+        ctx->buffer_start,
+        parser_peek(p)
+    );
+
+    diag_error_help(ctx->diag_ctx, location, message, help);
+}
+
+static void parser_error_after_previous(
+    MythrilContext* ctx,
+    Parser* p,
+    const char* message,
+    const char* help
+) {
+    SourceLocation location = source_location_from_token(
+        p->path,
+        ctx->buffer_start,
+        parser_previous(p)
+    );
+
+    location.column += location.length;
+    location.pointer += location.length;
+    location.length = 1;
+
+    diag_error_help(ctx->diag_ctx, location, message, help);
+}
+
+static void parser_error_at_previous(
+    MythrilContext* ctx,
+    Parser* p,
+    const char* message,
+    const char* help
+) {
+    SourceLocation location = source_location_from_token(
+        p->path,
+        ctx->buffer_start,
+        parser_previous(p)
+    );
+
+    diag_error_help(ctx->diag_ctx, location, message, help);
+}
+
+static AstNode* parser_fail(Parser* p, AstNode* node) {
+    parser_recover_sync(p);
+
+    node->kind = AST_ERROR;
+    return node;
+}
+
 AstNode* parse_module_decl(MythrilContext* ctx, Parser* p) {
     AstNode* module_decl = arena_alloc(p -> arena, sizeof(*module_decl));
 
@@ -249,6 +305,9 @@ AstNode* parse_function_decl(MythrilContext* ctx, Parser* p) {
 
     function_decl -> kind = AST_FUNCTION_DECL;
     function_decl -> function_decl.count = 0;
+    function_decl -> function_decl.capacity = 64;
+
+    function_decl -> function_decl.parameters = arena_alloc(p -> arena, sizeof(AstParameter) * 64);
 
     parser_advance(p);
 
@@ -358,9 +417,7 @@ AstNode* parse_function_decl(MythrilContext* ctx, Parser* p) {
         Token* param_type = parser_peek(p);
 
         if (
-            param_type -> kind != TOK_IDENTIFIER    && 
-            param_type -> kind != TOK_VOID          && 
-            !IS_PRIMITIVE_TYPE(param_type -> kind)
+            param_type -> kind != TOK_IDENTIFIER
         ) {
             SourceLocation location = source_location_from_token(
                 p -> path,
@@ -381,9 +438,23 @@ AstNode* parse_function_decl(MythrilContext* ctx, Parser* p) {
             return function_decl;
         }
 
-        function_decl -> function_decl.parameters = arena_alloc(p -> arena, sizeof(AstParameter) * 64);
-
         usize count = function_decl -> function_decl.count;
+
+        if (count >= function_decl -> function_decl.capacity) {
+            usize old_size = function_decl -> function_decl.capacity * sizeof(AstParameter);
+            usize new_size = old_size * 2;
+
+            usize old_cap = function_decl -> function_decl.capacity;
+            usize new_cap = old_cap * 2;
+
+            function_decl -> function_decl.parameters = arena_realloc(
+                p -> arena,
+                function_decl -> function_decl.parameters,
+                old_size,
+                new_size
+            );
+        }
+
         AstParameter* param = &function_decl -> function_decl.parameters[count];
 
         param -> identifier = *ast_make_slice_from_token(p -> arena, param_name);
@@ -453,9 +524,7 @@ AstNode* parse_function_decl(MythrilContext* ctx, Parser* p) {
     Token* return_type = parser_peek(p);
 
     if (
-        return_type -> kind != TOK_IDENTIFIER   && 
-        return_type -> kind != TOK_VOID         &&
-        !IS_PRIMITIVE_TYPE(return_type -> kind)
+        return_type -> kind != TOK_IDENTIFIER
     ) {
         SourceLocation location = source_location_from_token(
             p -> path,
@@ -552,8 +621,6 @@ AstNode* parse_static_decl(MythrilContext* ctx, Parser* p) {
 }
 
 AstVec parse_block(MythrilContext* ctx, Parser* p) {
-    parser_advance(p);
-
     AstVec vec = {
         .items = arena_alloc(p -> arena, sizeof(AstNode*) * 8),
         .count = 0,
@@ -577,7 +644,6 @@ AstVec parse_block(MythrilContext* ctx, Parser* p) {
     }
 
     return vec;
-
 }
 
 AstNode* parse_statement(MythrilContext* ctx, Parser* p) {

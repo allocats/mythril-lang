@@ -60,21 +60,7 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
     token -> length = len;
 
     switch (*start) {
-        case 'b': {
-            if (word_match("bool", len, start)) {
-                token -> kind = TOK_BOOL;
-                break;
-            }
-
-            token -> kind = TOK_IDENTIFIER;
-        } break;
-
         case 'c': {
-            if (word_match("char", len, start)) {
-                token -> kind = TOK_CHAR;
-                break;
-            }
-
             if (word_match("const", len, start)) {
                 token -> kind = TOK_CONST;
                 break;
@@ -98,16 +84,6 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
                 break;
             }
 
-            if (word_match("f32", len, start)) {
-                token -> kind = TOK_FLOAT_32;
-                break;
-            }
-
-            if (word_match("f64", len, start)) {
-                token -> kind = TOK_FLOAT_64;
-                break;
-            }
-
             if (word_match("false", len, start)) {
                 token -> kind = TOK_FALSE;
                 break;
@@ -117,26 +93,6 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
         } break;
 
         case 'i': {
-            if (word_match("i8", len, start)) {
-                token -> kind = TOK_INT_8;
-                break;
-            }
-
-            if (word_match("i16", len, start)) {
-                token -> kind = TOK_INT_16;
-                break;
-            }
-
-            if (word_match("i32", len, start)) {
-                token -> kind = TOK_INT_32;
-                break;
-            }
-
-            if (word_match("i64", len, start)) {
-                token -> kind = TOK_INT_64;
-                break;
-            }
-
             if (word_match("if", len, start)) {
                 token -> kind = TOK_IF;
                 break;
@@ -212,11 +168,6 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
                 break;
             }
 
-            if (word_match("ssize", len, start)) {
-                token -> kind = TOK_SSIZE;
-                break;
-            }
-
             if (word_match("struct", len, start)) {
                 token -> kind = TOK_STRUCT;
                 break;
@@ -240,42 +191,8 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
         } break;
 
         case 'u': {
-            if (word_match("u8", len, start)) {
-                token -> kind = TOK_UINT_8;
-                break;
-            }
-
-            if (word_match("u16", len, start)) {
-                token -> kind = TOK_UINT_16;
-                break;
-            }
-
-            if (word_match("u32", len, start)) {
-                token -> kind = TOK_UINT_32;
-                break;
-            }
-
-            if (word_match("u64", len, start)) {
-                token -> kind = TOK_UINT_64;
-                break;
-            }
-
-            if (word_match("usize", len, start)) {
-                token -> kind = TOK_USIZE;
-                break;
-            }
-
             if (word_match("uninit", len, start)) {
                 token -> kind = TOK_UNINIT;
-                break;
-            }
-
-            token -> kind = TOK_IDENTIFIER;
-        } break;
-
-        case 'v': {
-            if (word_match("void", len, start)) {
-                token -> kind = TOK_VOID;
                 break;
             }
 

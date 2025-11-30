@@ -77,29 +77,9 @@
     X(TOK_LITERAL_FLOAT)            \
     X(TOK_LITERAL_STRING)           \
                                     \
-    X(TOK_UINT_8)                   \
-    X(TOK_UINT_16)                  \
-    X(TOK_UINT_32)                  \
-    X(TOK_UINT_64)                  \
-                                    \
-    X(TOK_INT_8)                    \
-    X(TOK_INT_16)                   \
-    X(TOK_INT_32)                   \
-    X(TOK_INT_64)                   \
-                                    \
-    X(TOK_FLOAT_32)                 \
-    X(TOK_FLOAT_64)                 \
-                                    \
-    X(TOK_USIZE)                    \
-    X(TOK_SSIZE)                    \
-                                    \
-    X(TOK_CHAR)                     \
-                                    \
-    X(TOK_BOOL)                     \
     X(TOK_TRUE)                     \
     X(TOK_FALSE)                    \
                                     \
-    X(TOK_VOID)                     \
     X(TOK_NULL)                     \
     X(TOK_UNINIT)                   \
                                     \
@@ -129,7 +109,7 @@
     X(TOK_EOF)                      \
     X(TOK_EOP)                      \
     X(TOK_ERROR)                    \
-    X(TOK_KIND_COUNT)               \
+    X(TOK_KIND_COUNT)
 
 typedef enum {
     X_TOKENS(GENERATE_ENUM)
