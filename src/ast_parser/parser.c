@@ -2,16 +2,15 @@
 
 #include "../arena/arena.h"
 #include "../ast/ast.h"
-#include "../hash/hash.h"
 #include "../diagnostics/diagnostics.h"
-#include "../tokens/tokens.h"
-#include "../utils/vec.h"
 
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-static void parser_recover_sync(Parser* p) {
+/* error handling */
+
+void parser_recover_sync(Parser* p) {
     while (
         !parser_check(p, TOK_SEMI_COLON)    &&
         !parser_check(p, TOK_RIGHT_BRACE)   &&
@@ -40,30 +39,20 @@ static void parser_recover_sync(Parser* p) {
     }
 }
 
-static void parser_error_at_current(
-    MythrilContext* ctx, 
-    Parser* p,
-    const char* message,
-    const char* help
-) {
+void parser_error_at_current(MythrilContext* ctx, Parser* p, const char* msg, const char* help) {
     SourceLocation location = source_location_from_token(
-        p->path,
-        ctx->buffer_start,
+        p -> path,
+        ctx -> buffer_start,
         parser_peek(p)
     );
 
-    diag_error_help(ctx->diag_ctx, location, message, help);
+    diag_error_help(ctx -> diag_ctx, location, msg, help);
 }
 
-static void parser_error_after_previous(
-    MythrilContext* ctx,
-    Parser* p,
-    const char* message,
-    const char* help
-) {
+void parser_error_after_previous(MythrilContext* ctx, Parser* p, const char* msg, const char* help) {
     SourceLocation location = source_location_from_token(
-        p->path,
-        ctx->buffer_start,
+        p -> path,
+        ctx -> buffer_start,
         parser_previous(p)
     );
 
@@ -71,10 +60,10 @@ static void parser_error_after_previous(
     location.pointer += location.length;
     location.length = 1;
 
-    diag_error_help(ctx->diag_ctx, location, message, help);
+    diag_error_help(ctx -> diag_ctx, location, msg, help);
 }
 
-static void parser_error_at_previous(
+void parser_error_at_previous(
     MythrilContext* ctx,
     Parser* p,
     const char* message,
@@ -86,538 +75,220 @@ static void parser_error_at_previous(
         parser_previous(p)
     );
 
-    diag_error_help(ctx->diag_ctx, location, message, help);
+    diag_error_help(ctx -> diag_ctx, location, message, help);
 }
 
-static AstNode* parser_fail(Parser* p, AstNode* node) {
+AstNode* parser_fail(Parser* p, AstNode* node) {
     parser_recover_sync(p);
 
-    node->kind = AST_ERROR;
+    node -> kind = AST_ERROR;
+
     return node;
 }
 
-AstNode* parse_module_decl(MythrilContext* ctx, Parser* p) {
-    AstNode* module_decl = arena_alloc(p -> arena, sizeof(*module_decl));
+/* parsing */ 
 
-    module_decl -> kind = AST_MODULE_DECL;
-    module_decl -> module_decl.count = 0;
+#define MAX_PATH_SEGMENTS 64
+#define SEGMENTS_SIZE (sizeof(AstSlice) * MAX_PATH_SEGMENTS)
 
-    parser_advance(p);
-
-    if (!parser_check(p, TOK_IDENTIFIER)) {
-        SourceLocation location = source_location_from_token(
-            p -> path,
-            ctx -> buffer_start, 
-            parser_previous(p) 
-        );
-
-        location.pointer += location.length + 1;
-        location.column += location.length + 1;
-        location.length = 1;
-
-        diag_error_help(
-            ctx -> diag_ctx,
-            location,
-            "expected a module name",
-            "add a module name"
-        );
-
-        parser_recover_sync(p);
-
-        module_decl -> kind = AST_ERROR;
-        return module_decl;
+bool parse_path_segments(MythrilContext* ctx, Parser* p, AstSlice* segments, usize* count) {
+    if (!parser_require(ctx, p, TOK_IDENTIFIER, "module name before '::'")) {
+        return false;
     }
 
     while (!parser_check(p, TOK_SEMI_COLON)) {
-        Token* segment = parser_advance(p);
+        if (*count > MAX_PATH_SEGMENTS) {
+            parser_error_at_current(
+                ctx,
+                p,
+                "too many path segments",
+                "module paths are limited to 64 segments, sorry"
+            );
+        }
 
-        AstSlice* slice = &module_decl -> module_decl.segments[module_decl -> module_decl.count++];
-        slice = ast_make_slice_from_token(p -> arena, segment);
+        Token* segment = parser_advance(p);
+        segments[(*count)++] = *ast_make_slice_from_token(p -> arena, segment);
 
         if (parser_check(p, TOK_SEMI_COLON)) {
             break;
         }
-
-        if (!parser_check(p, TOK_COLON_COLON)) {
-            SourceLocation location = source_location_from_token(
-                p -> path,
-                ctx -> buffer_start, 
-                parser_previous(p) 
-            );
-
-            location.column += location.length;
-            location.pointer += location.length;
-            location.length = 1;
-
-            diag_error_help(
-                ctx -> diag_ctx,
-                location,
-                "expected '::' or ';' after module name",
-                "add '::' to continue module path or ';' to end the declaration"
-            );
-
-            parser_recover_sync(p);
-
-            module_decl -> kind = AST_ERROR;
-            return module_decl;
+        
+        if (!parser_expect(ctx, p, TOK_COLON_COLON, "'::' or ';'")) {
+            return false;
         }
 
-        parser_advance(p);
-
-        if (!parser_check(p, TOK_IDENTIFIER)) {
-            SourceLocation location = source_location_from_token(
-                p -> path,
-                ctx -> buffer_start, 
-                parser_peek(p) 
-            );
-
-            diag_error_help(
-                ctx -> diag_ctx,
-                location,
-                "expected module name after '::'",
-                "add a module name"
-            );
-
-            parser_recover_sync(p);
-            module_decl -> kind = AST_ERROR;
-            return module_decl;
+        if (!parser_require(ctx, p, TOK_IDENTIFIER, "module name after '::'")) {
+            return false;
         }
     }
 
     parser_advance(p);
 
-    return module_decl;
+    return true;
+}
+
+AstNode* parse_module_decl(MythrilContext* ctx, Parser* p) {
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+    node -> kind = AST_MODULE_DECL;
+    node -> module_decl.count = 0;
+    node -> module_decl.segments = arena_alloc(p -> arena, SEGMENTS_SIZE);
+
+    parser_advance(p);
+
+    if (!parse_path_segments(
+        ctx,
+        p,
+        node -> module_decl.segments,
+        &node -> module_decl.count
+    )) {
+        return parser_fail(p, node);
+    }
+
+    return node;
 }
 
 AstNode* parse_import_decl(MythrilContext* ctx, Parser* p) {
-    AstNode* import_decl = arena_alloc(p -> arena, sizeof(*import_decl));
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
-    import_decl -> kind = AST_IMPORT_DECL;
-    import_decl -> import_decl.count = 0;
-
-    parser_advance(p);
-
-    if (!parser_check(p, TOK_IDENTIFIER)) {
-        SourceLocation location = source_location_from_token(
-            p -> path,
-            ctx -> buffer_start, 
-            parser_previous(p) 
-        );
-
-        location.pointer += location.length + 1;
-        location.column += location.length + 1;
-        location.length = 1;
-
-        diag_error_help(
-            ctx -> diag_ctx,
-            location,
-            "expected a module name",
-            "try adding a module name"
-        );
-
-        parser_recover_sync(p);
-
-        import_decl -> kind = AST_ERROR;
-        return import_decl;
-    }
-
-    while (!parser_check(p, TOK_SEMI_COLON)) {
-        Token* segment = parser_advance(p);
-
-        AstSlice* slice = &import_decl -> import_decl.segments[import_decl -> import_decl.count++];
-        slice = ast_make_slice_from_token(p -> arena, segment);
-
-        if (parser_check(p, TOK_SEMI_COLON)) {
-            break;
-        }
-
-        if (!parser_check(p, TOK_COLON_COLON)) {
-            SourceLocation location = source_location_from_token(
-                p -> path,
-                ctx -> buffer_start, 
-                parser_previous(p) 
-            );
-
-            location.column += location.length;
-            location.pointer += location.length;
-            location.length = 1;
-
-            diag_error_help(
-                ctx -> diag_ctx,
-                location,
-                "expected '::' or ';' after module name",
-                "add '::' to continue module path or ';' to end the import"
-            );
-
-            parser_recover_sync(p);
-
-            import_decl -> kind = AST_ERROR;
-            return import_decl;
-        }
-
-        parser_advance(p);
-
-        if (!parser_check(p, TOK_IDENTIFIER)) {
-            SourceLocation location = source_location_from_token(
-                p -> path,
-                ctx -> buffer_start, 
-                parser_peek(p) 
-            );
-
-            diag_error_help(
-                ctx -> diag_ctx,
-                location,
-                "expected module name after '::'",
-                "add a module name"
-            );
-
-            parser_recover_sync(p);
-            import_decl -> kind = AST_ERROR;
-            return import_decl;
-        }
-    }
+    node -> kind = AST_IMPORT_DECL;
+    node -> import_decl.count = 0;
+    node -> import_decl.segments = arena_alloc(p -> arena, SEGMENTS_SIZE); 
 
     parser_advance(p);
 
-    return import_decl;
+    if (!parse_path_segments(
+        ctx,
+        p,
+        node -> import_decl.segments,
+        &node -> import_decl.count
+    )) {
+        return parser_fail(p, node);
+    }
+
+    return node;
 }
 
 AstNode* parse_enum_decl(MythrilContext* ctx, Parser* p) {
-    AstNode* enum_decl = arena_alloc(p -> arena, sizeof(*enum_decl));
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
-    return enum_decl;
+    return node;
 }
 
 AstNode* parse_struct_decl(MythrilContext* ctx, Parser* p) {
-    AstNode* struct_decl = arena_alloc(p -> arena, sizeof(*struct_decl));
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
-    return struct_decl;
+    return node;
 }
 
 AstNode* parse_impl_decl(MythrilContext* ctx, Parser* p) {
-    AstNode* impl_decl = arena_alloc(p -> arena, sizeof(*impl_decl));
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
-    return impl_decl;
+    return node;
 }
 
 AstNode* parse_function_decl(MythrilContext* ctx, Parser* p) {
-    AstNode* function_decl = arena_alloc(p -> arena, sizeof(*function_decl));
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
-    function_decl -> kind = AST_FUNCTION_DECL;
-    function_decl -> function_decl.count = 0;
-    function_decl -> function_decl.capacity = 64;
-
-    function_decl -> function_decl.parameters = arena_alloc(p -> arena, sizeof(AstParameter) * 64);
-
-    parser_advance(p);
-
-    if (!parser_check(p, TOK_IDENTIFIER)) {
-        SourceLocation location = source_location_from_token(
-            p -> path,
-            ctx -> buffer_start, 
-            parser_peek(p) 
-        );
-
-        location.length = 1;
-
-        diag_error_help(
-            ctx -> diag_ctx,
-            location,
-            "expected a function name",
-            "try adding a name after 'fn' and before '('"
-        );
-
-        parser_recover_sync(p);
-
-        function_decl -> kind = AST_ERROR;
-        return function_decl;
-    }
-
-    Token* ident_token = parser_advance(p);
-
-    AstSlice* slice = &function_decl -> function_decl.identifier;
-    slice = ast_make_slice_from_token(p -> arena, ident_token);
-    
-    if (!parser_check(p, TOK_LEFT_PAREN)) {
-        SourceLocation location = source_location_from_token(
-            p -> path,
-            ctx -> buffer_start, 
-            parser_previous(p) 
-        );
-
-        location.column += location.length;
-        location.pointer += location.length;
-        location.length = 1;
-
-        diag_error_help(
-            ctx -> diag_ctx,
-            location,
-            "expected '(' after function name",
-            "add '(' after function name"
-        );
-
-        parser_recover_sync(p);
-
-        function_decl -> kind = AST_ERROR;
-        return function_decl;
-    }
+    node -> kind = AST_FUNCTION_DECL;
+    node -> function_decl.count = 0;
+    node -> function_decl.capacity = 64;
+    node -> function_decl.parameters = arena_alloc(p -> arena, sizeof(AstParameter) * 64);
 
     parser_advance(p);
 
-    /* paramater parsing */
+    if (!parser_require(ctx, p, TOK_IDENTIFIER, "function name")) {
+        return parser_fail(p, node);
+    }
+
+    Token* name = parser_advance(p);
+    node -> function_decl.identifier = *ast_make_slice_from_token(p -> arena, name);
+
+    if (!parser_expect(ctx, p, TOK_LEFT_PAREN, "'('")) {
+        return parser_fail(p, node);
+    }
+
     while (!parser_check(p, TOK_RIGHT_PAREN)) {
-        if (!parser_check(p, TOK_IDENTIFIER)) {
-            SourceLocation location = source_location_from_token(
-                p -> path,
-                ctx -> buffer_start, 
-                parser_previous(p) 
+        if (node -> function_decl.count >= node -> function_decl.capacity) {
+            usize old_size = node -> function_decl.capacity * sizeof(AstParameter);
+            usize new_size = old_size * 2;
+
+            node -> function_decl.parameters = arena_realloc(
+                p -> arena,
+                node -> function_decl.parameters,
+                old_size,
+                new_size
             );
 
-            diag_error_help(
-                ctx -> diag_ctx,
-                location,
-                "expected paramater name",
-                "name your paramters"
-            );
+            node -> function_decl.capacity *= 2;
+        }
 
-            parser_recover_sync(p);
-
-            function_decl -> kind = AST_ERROR;
-            return function_decl;
+        if (!parser_require(ctx, p, TOK_IDENTIFIER, "parameter name")) {
+            return parser_fail(p, node);
         }
 
         Token* param_name = parser_advance(p);
 
-        if (!parser_check(p, TOK_COLON)) {
-            SourceLocation location = source_location_from_token(
-                p -> path,
-                ctx -> buffer_start, 
-                parser_previous(p) 
-            );
-
-            location.column += location.length;
-            location.pointer += location.length;
-            location.length = 1;
-
-            diag_error_help(
-                ctx -> diag_ctx,
-                location,
-                "expected ':' between parameter name and type",
-                "add ':' here"
-            );
-
-            parser_recover_sync(p);
-
-            function_decl -> kind = AST_ERROR;
-            return function_decl;
-        }
-        
-        parser_advance(p);
-
-        Token* param_type = parser_peek(p);
-
-        if (
-            param_type -> kind != TOK_IDENTIFIER
-        ) {
-            SourceLocation location = source_location_from_token(
-                p -> path,
-                ctx -> buffer_start, 
-                parser_previous(p) 
-            );
-
-            diag_error_help(
-                ctx -> diag_ctx,
-                location,
-                "expected parameter type",
-                "add a type to parameter"
-            );
-
-            parser_recover_sync(p);
-
-            function_decl -> kind = AST_ERROR;
-            return function_decl;
+        if (!parser_expect(ctx, p, TOK_COLON, "':' between parameter name and type")) {
+            return parser_fail(p, node);
         }
 
-        usize count = function_decl -> function_decl.count;
-
-        if (count >= function_decl -> function_decl.capacity) {
-            usize old_size = function_decl -> function_decl.capacity * sizeof(AstParameter);
-            usize new_size = old_size * 2;
-
-            usize old_cap = function_decl -> function_decl.capacity;
-            usize new_cap = old_cap * 2;
-
-            function_decl -> function_decl.parameters = arena_realloc(
-                p -> arena,
-                function_decl -> function_decl.parameters,
-                old_size,
-                new_size
-            );
-        }
-
-        AstParameter* param = &function_decl -> function_decl.parameters[count];
+        usize index = node -> function_decl.count;
+        AstParameter* param = &node -> function_decl.parameters[index];
 
         param -> identifier = *ast_make_slice_from_token(p -> arena, param_name);
         param -> type = parse_type(ctx, p);
 
-        function_decl -> function_decl.count++;
+        if (param -> type == nullptr) {
+            return parser_fail(p, node);
+        }
 
         if (parser_check(p, TOK_RIGHT_PAREN)) {
             break;
         }
 
-        if (!parser_check(p, TOK_COMMA)) {
-            SourceLocation location = source_location_from_token(
-                p -> path,
-                ctx -> buffer_start, 
-                parser_previous(p) 
-            );
-
-            location.column += location.length;
-            location.pointer += location.length;
-            location.length = 1;
-
-            diag_error_help(
-                ctx -> diag_ctx,
-                location,
-                "expected a ',' between parameters",
-                "add a ',' here"
-            );
-
-            parser_recover_sync(p);
-
-            function_decl -> kind = AST_ERROR;
-            return function_decl;
+        if (!parser_expect(ctx, p, TOK_COMMA, "',' between parameters")) {
+            return parser_fail(p, node);
         }
-
-        parser_advance(p);
-    } /* end of parameters */
-
-    parser_advance(p);
-
-    if (!parser_check(p, TOK_COLON)) {
-        SourceLocation location = source_location_from_token(
-            p -> path,
-            ctx -> buffer_start, 
-            parser_previous(p) 
-        );
-
-        location.column += location.length;
-        location.pointer += location.length;
-        location.length = 1;
-
-        diag_error_help(
-            ctx -> diag_ctx,
-            location,
-            "expected a ':' after parameters, before return type",
-            "add a ':' here"
-        );
-
-        parser_recover_sync(p);
-
-        function_decl -> kind = AST_ERROR;
-        return function_decl;
     }
 
-    parser_advance(p);
-
-    Token* return_type = parser_peek(p);
-
-    if (
-        return_type -> kind != TOK_IDENTIFIER
-    ) {
-        SourceLocation location = source_location_from_token(
-            p -> path,
-            ctx -> buffer_start, 
-            parser_previous(p) 
-        );
-
-        location.column += location.length;
-        location.pointer += location.length;
-        location.length = 1;
-
-        diag_error_help(
-            ctx -> diag_ctx,
-            location,
-            "expected return type",
-            "add a return type to function"
-        );
-
-        parser_recover_sync(p);
-
-        function_decl -> kind = AST_ERROR;
-        return function_decl;
-    }
-
-    function_decl -> function_decl.return_type = parse_type(ctx, p);
-
-    if (!parser_check(p, TOK_LEFT_BRACE)) {
-        SourceLocation location = source_location_from_token(
-            p -> path,
-            ctx -> buffer_start, 
-            parser_previous(p) 
-        );
-
-        location.column += location.length;
-        location.pointer += location.length;
-        location.length = 1;
-
-        diag_error_help(
-            ctx -> diag_ctx,
-            location,
-            "expected a '{' to mark start of block",
-            "add a '{' here"
-        );
-
-        parser_recover_sync(p);
-
-        function_decl -> kind = AST_ERROR;
-        return function_decl;
-    }
-
-    parser_advance(p);
-
-    function_decl -> function_decl.block = parse_block(ctx, p);
-
-    if (!parser_check(p, TOK_RIGHT_BRACE)) {
-        SourceLocation location = source_location_from_token(
-            p -> path,
-            ctx -> buffer_start, 
-            parser_previous(p) 
-        );
-
-        location.column += location.length;
-        location.pointer += location.length;
-        location.length = 1;
-
-        diag_error_help(
-            ctx -> diag_ctx,
-            location,
-            "expected a '}' to mark end of block",
-            "add a '}' here"
-        );
-
-        parser_recover_sync(p);
-
-        function_decl -> kind = AST_ERROR;
-        return function_decl;
+    if (!parser_expect(ctx, p, TOK_RIGHT_PAREN, "')'")) {
+        return parser_fail(p, node);
     }
     
-    parser_advance(p);
+    if (!parser_expect(ctx, p, TOK_COLON, "':' before return type")) {
+        return parser_fail(p, node);
+    }
+    
+    node -> function_decl.return_type = parse_type(ctx, p);
 
-    return function_decl;
+    if (node -> function_decl.return_type == NULL) {
+        return parser_fail(p, node);
+    }
+    
+    if (!parser_expect(ctx, p, TOK_LEFT_BRACE, "'{'")) {
+        return parser_fail(p, node);
+    }
+    
+    node -> function_decl.block = parse_block(ctx, p);
+    
+    if (!parser_expect(ctx, p, TOK_RIGHT_BRACE, "'}'")) {
+        return parser_fail(p, node);
+    }
+
+    return node;
 }
 
 AstNode* parse_const_decl(MythrilContext* ctx, Parser* p) {
-    AstNode* const_decl = arena_alloc(p -> arena, sizeof(*const_decl));
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
-    return const_decl;
+    return node;
 }
 
 AstNode* parse_static_decl(MythrilContext* ctx, Parser* p) {
-    AstNode* static_decl = arena_alloc(p -> arena, sizeof(*static_decl));
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
-    return static_decl;
+    return node;
 }
 
 AstVec parse_block(MythrilContext* ctx, Parser* p) {
@@ -647,16 +318,23 @@ AstVec parse_block(MythrilContext* ctx, Parser* p) {
 }
 
 AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
+    return node;
 }
 
 AstNode* parse_expression(MythrilContext* ctx, Parser* p) {
-    AstNode* expression = arena_alloc(p -> arena, sizeof(*expression));
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
-    return expression;
+    return node;
 }
 
 AstType* parse_type(MythrilContext* ctx, Parser* p) {
+    if (!parser_require(ctx, p, TOK_IDENTIFIER, "type identifier")) {
+        parser_recover_sync(p);
+        return NULL;
+    }
+    
     Token* base_token = parser_advance(p);
 
     AstType* base_type = arena_alloc(p -> arena, sizeof(*base_type));
@@ -688,16 +366,11 @@ AstType* parse_type(MythrilContext* ctx, Parser* p) {
                 array_type -> array.size_expr = parse_expression(ctx, p);
                 
                 if (array_type -> array.size_expr == NULL) {
-                    SourceLocation location = source_location_from_token(
-                        p -> path,
-                        ctx -> buffer_start,
-                        parser_peek(p)
-                    );
-                    diag_error_help(
-                        ctx -> diag_ctx,
-                        location,
+                    parser_error_at_current(
+                        ctx,
+                        p,
                         "expected array size expression or ']'",
-                        "provide a constant expression like '10' or 'SIZE_CONST'"
+                        "provide constant expression like 10 or 'BUFFER_SIZE'" 
                     );
                     parser_recover_sync(p);
                     return NULL;
@@ -706,20 +379,7 @@ AstType* parse_type(MythrilContext* ctx, Parser* p) {
                 array_type -> array.size_expr = NULL;
             }
             
-            if (!parser_check(p, TOK_RIGHT_SQUARE)) {
-                SourceLocation location = source_location_from_token(
-                    p -> path,
-                    ctx -> buffer_start,
-                    parser_peek(p)
-                );
-
-                diag_error_help(
-                    ctx -> diag_ctx,
-                    location,
-                    "expected ']' after array size",
-                    "add ']' to close the array type declaration"
-                );
-
+            if (!parser_expect(ctx, p, TOK_RIGHT_SQUARE, "']'")) {
                 parser_recover_sync(p);
 
                 return NULL;
@@ -737,12 +397,48 @@ AstType* parse_type(MythrilContext* ctx, Parser* p) {
     return result;
 }
 
+
 u64 parse_integer(char* ptr, usize len) {
     char buffer[32];
+
     memcpy(buffer, ptr, len);
     buffer[len] = 0;
 
     return strtoull(buffer, NULL, 10);
+}
+
+bool parser_expect(MythrilContext* ctx, Parser* p, TokenKind kind, const char* what) {
+    if (!parser_check(p, kind)) {
+        char msg[128];
+        char help[128];
+
+        snprintf(msg, sizeof(msg), "expected %s", what);
+        snprintf(help, sizeof(help), "add %s here", what);
+
+        parser_error_after_previous(ctx, p, msg, help);
+
+        return false;
+    }
+
+    parser_advance(p);
+
+    return true;
+}
+
+bool parser_require(MythrilContext* ctx, Parser* p, TokenKind kind, const char* what) {
+    if (!parser_check(p, kind)) {
+        char msg[128];
+        char help[128];
+
+        snprintf(msg, sizeof(msg), "expected %s", what);
+        snprintf(help, sizeof(help), "add %s", what);
+
+        parser_error_at_current(ctx, p, msg, help);
+
+        return false;
+    }
+
+    return true;
 }
 
 inline Token* parser_previous(Parser* p) {

@@ -23,6 +23,13 @@ AstType* parse_type(MythrilContext* ctx, Parser* p);
 
 u64 parse_integer(char* ptr, usize len);
 
+//
+//  tokens and token consumption, mmmmm yummy
+//
+
+bool parser_expect(MythrilContext* ctx, Parser* p, TokenKind kind, const char* what); 
+bool parser_require(MythrilContext* ctx, Parser* p, TokenKind kind, const char* what);
+
 Token* parser_previous(Parser* p);
 Token* parser_peek(Parser* p);
 Token* parser_peek_ahead(Parser* p);
