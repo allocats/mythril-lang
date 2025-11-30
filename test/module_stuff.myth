@@ -1,5 +1,7 @@
-import std::io;
+module std::io;
+
+import std::mem;
 
 fn main(): void {
-    println("Hello world");
+
 }

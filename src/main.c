@@ -7,12 +7,16 @@
 #include <unistd.h>
 
 #include "arena/arena.h"
+#include "ast/ast.h"
+#include "ast/types.h"
 #include "diagnostics/diagnostics.h"
 #include "files/types.h"
 #include "lexer/lexer.h"
 #include "mythril/types.h"
 #include "tokens/tokens.h"
+#include "tokens/types.h"
 #include "utils/types.h"
+#include "utils/vec.h"
 
 static ArenaAllocator arena = {0};
 
@@ -82,14 +86,21 @@ i32 main(i32 argc, char* argv[]) {
 
     Tokens tokens = {
         .items = arena_alloc(&arena, sizeof(Token) * 64),
-        .count = 0,
-        .capacity = 64
+        .capacity = 64,
+        .count = 0
+    };
+
+    Program program = {
+        .items = nullptr, // Allocate in parse() initial capacity of tokens.count
+        .capacity = 0,
+        .count = 0
     };
 
     MythrilContext mythril_ctx = {
         .arena = &arena,
         .diag_ctx = &diag_ctx,
         .tokens = &tokens,
+        .program = &program,
     };
 
     for (u32 i = 0; i < file_count; i++) {
@@ -109,14 +120,27 @@ i32 main(i32 argc, char* argv[]) {
         tokenize(&mythril_ctx);
     }
 
+    Token end_of_program_token = {
+        .kind = TOK_EOP,
+        .lexeme = nullptr,
+        .length = 0
+    };
+
+    mythril_ctx.tokens -> items[mythril_ctx.tokens -> count++] = end_of_program_token;
+
+    /* add a TOK_EOP (end of program) token type? then append that parse until that? */
+    parse(&mythril_ctx, file_paths);
+
     #ifdef MYTHRIL_DEBUG
         print_tokens(tokens);
     #endif /* ifdef MYTHRIL_DEBUG */
 
+    printf("\n");
+
     if (diag_ctx.error_count == 0) {
         // codegen()
         exit_code = 0;
-        printf("\ncompiled successfully\n");
+        printf("compiled successfully\n");
     } else {
         diagnostics_print_all(&diag_ctx);
         exit_code = 1;

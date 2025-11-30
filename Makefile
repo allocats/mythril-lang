@@ -1,5 +1,5 @@
 CC      = clang
-CFLAGS  = -Wall -Wextra -march=native -DMYTHRIL_DEBUG
+CFLAGS  = -Wall -Wextra -march=native -g3 
 
 SRC_DIR   = src
 BUILD_DIR = build
@@ -9,6 +9,8 @@ MYTHRIL = $(BIN_DIR)/mythril
 
 SRCS = $(wildcard $(SRC_DIR)/*.c) 				\
        $(wildcard $(SRC_DIR)/arena/*.c) 		\
+       $(wildcard $(SRC_DIR)/ast/*.c) 			\
+       $(wildcard $(SRC_DIR)/ast_parser/*.c) 	\
        $(wildcard $(SRC_DIR)/diagnostics/*.c) 	\
        $(wildcard $(SRC_DIR)/hash/*.c) 			\
        $(wildcard $(SRC_DIR)/lexer/*.c)			\

@@ -93,11 +93,11 @@
     X(TOK_USIZE)                    \
     X(TOK_SSIZE)                    \
                                     \
+    X(TOK_CHAR)                     \
+                                    \
     X(TOK_BOOL)                     \
     X(TOK_TRUE)                     \
     X(TOK_FALSE)                    \
-                                    \
-    X(TOK_CHAR)                     \
                                     \
     X(TOK_VOID)                     \
     X(TOK_NULL)                     \
@@ -121,13 +121,13 @@
                                     \
     X(TOK_IF)                       \
     X(TOK_MATCH)                    \
-    X(TOK_FOR)                      \
+    X(TOK_LOOP)                     \
     X(TOK_IN)                       \
-    X(TOK_WHILE)                    \
                                     \
     X(TOK_RETURN)                   \
                                     \
     X(TOK_EOF)                      \
+    X(TOK_EOP)                      \
     X(TOK_ERROR)                    \
     X(TOK_KIND_COUNT)               \
 
@@ -140,7 +140,7 @@ static const char* TOKEN_KIND_STRINGS[] = {
 };
 
 typedef struct {
-    const char* lexeme;
+    char* lexeme;
     usize length;
     TokenKind kind;
 } Token;

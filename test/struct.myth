@@ -6,13 +6,13 @@ struct MyStruct {
 impl MyStruct {
     // All structs are intialized to zero, this leads to 0 * 2 
     fn do_nothing(self): i32 {
-        self -> a *= 2;
-        return my_struct -> a;
+        self.a *= 2;
+        return self.a;
     }
 
     fn do_something(&self): i32 {
         self -> b += 2;
-        return my_struct -> b;
+        return self -> b;
     }
 }
 

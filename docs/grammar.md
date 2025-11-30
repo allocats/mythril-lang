@@ -58,7 +58,7 @@ assign_op   = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" ;
   
 if_stmt     = "if" expression block [ "else" ( if_stmt | block ) ] ;  
   
-
+ 
 pattern     = IDENTIFIER  
             | literal  
             | IDENTIFIER "(" [ pattern { "," pattern } ] ")"  
@@ -66,11 +66,10 @@ pattern     = IDENTIFIER
 
 match_stmt  = "match" expression "{" { pattern ":" block } [ "_" ":" block ] "}" ;  
   
-
-for_stmt      = "for" IDENTIFIER "in" expression block ;  
-while_stmt    = "while" expression block ;  
-break_stmt    = "break" ";" ;
-continue_stmt = "continue" ";" ;
+  
+loop_stmt     = "loop" [ statement ] [ expression ] [ statement ] block ;  
+break_stmt    = "break" ";" ;  
+continue_stmt = "continue" ";" ;  
 return_stmt   = "return" [ expression ] ";" ;  
 expr_stmt     = expression ";" ;  
 

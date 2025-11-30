@@ -98,11 +98,6 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
                 break;
             }
 
-            if (word_match("for", len, start)) {
-                token -> kind = TOK_FOR;
-                break;
-            }
-
             if (word_match("f32", len, start)) {
                 token -> kind = TOK_FLOAT_32;
                 break;
@@ -168,6 +163,11 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
         case 'l': {
             if (word_match("let", len, start)) {
                 token -> kind = TOK_LET;
+                break;
+            }
+
+            if (word_match("loop", len, start)) {
+                token -> kind = TOK_LOOP;
                 break;
             }
 
@@ -276,15 +276,6 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
         case 'v': {
             if (word_match("void", len, start)) {
                 token -> kind = TOK_VOID;
-                break;
-            }
-
-            token -> kind = TOK_IDENTIFIER;
-        } break;
-
-        case 'w': {
-            if (word_match("while", len, start)) {
-                token -> kind = TOK_WHILE;
                 break;
             }
 
