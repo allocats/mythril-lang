@@ -69,6 +69,10 @@ void parse(MythrilContext* ctx, char** paths) {
                 node = parse_static_decl(ctx, &parser);
             } break;
 
+            case TOK_RIGHT_BRACE: {
+                parser_advance(&parser);
+            } break;
+
             case TOK_EOF: {
                 parser.path = *paths++;
                 parser_advance(&parser);

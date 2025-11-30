@@ -32,8 +32,7 @@ void parser_recover_sync(Parser* p) {
     }
 
     if (
-        parser_check(p, TOK_SEMI_COLON) ||
-        parser_check(p, TOK_RIGHT_BRACE)
+        parser_check(p, TOK_SEMI_COLON)
     ) {
         parser_advance(p);
     }
@@ -291,6 +290,45 @@ AstNode* parse_static_decl(MythrilContext* ctx, Parser* p) {
     return node;
 }
 
+AstNode* parse_var_decl(MythrilContext* ctx, Parser *p) {
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+    node -> kind = AST_VAR_DECL;
+
+    parser_advance(p);
+
+    if (!parser_require(ctx, p, TOK_IDENTIFIER, "variable name")) {
+        return parser_fail(p, node);
+    }
+
+    Token* name = parser_advance(p);
+
+    if (!parser_expect(ctx, p, TOK_COLON, "':' between identifer and type")) {
+        return parser_fail(p, node);
+    }
+
+    node -> var_decl.identifier = *ast_make_slice_from_token(p -> arena, name);
+    node -> var_decl.type = parse_type(ctx, p);
+    node -> var_decl.value = nullptr;
+
+    if (node -> var_decl.type == nullptr) {
+        return parser_fail(p, node);
+    }
+
+    if (parser_check(p, TOK_SEMI_COLON)) {
+        parser_advance(p);
+        return node;
+    }
+
+    if (!parser_expect(ctx, p, TOK_EQUALS, "'=' or ';'")) {
+        return parser_fail(p, node);
+    }
+
+    node -> var_decl.value = parse_expression(ctx, p);
+
+    return node;
+}
+
 AstVec parse_block(MythrilContext* ctx, Parser* p) {
     AstVec vec = {
         .items = arena_alloc(p -> arena, sizeof(AstNode*) * 8),
@@ -303,6 +341,7 @@ AstVec parse_block(MythrilContext* ctx, Parser* p) {
 
         if (vec.count >= vec.capacity) {
             usize size = vec.count * sizeof(*vec.items);
+
             vec.items = arena_realloc(p -> arena, vec.items, size, size * 2);
             vec.capacity *= 2;
         }
@@ -311,19 +350,57 @@ AstVec parse_block(MythrilContext* ctx, Parser* p) {
     }
 
     if (vec.count == 0) {
-        // ast_warn(parser_peek(p), p, "Empty block");
+        // diag_warning(ctx -> diag_ctx, SourceLocation loc, const char *fmt, ...)
     }
 
     return vec;
 }
 
 AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
+    AstNode* node = nullptr;
+
+    switch (parser_peek(p) -> kind) {
+        case TOK_LET: {
+            node = parse_var_decl(ctx, p);
+        } break;
+
+        case TOK_CONST: {
+            node = parse_const_decl(ctx, p);
+        } break;
+
+        case TOK_IDENTIFIER: {
+            node = parse_expression(ctx, p);
+        } break;
+
+        case TOK_LOOP: {
+            node = parse_loop_stmt(ctx, p);
+        } break;
+
+        case TOK_RETURN: {
+            node = parse_return_stmt(ctx, p);
+        } break;
+
+        default: {
+        } break;
+    }
+
+    return node;
+}
+
+
+AstNode* parse_loop_stmt(MythrilContext* ctx, Parser* p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
     return node;
 }
 
 AstNode* parse_expression(MythrilContext* ctx, Parser* p) {
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+    return node;
+}
+
+AstNode* parse_return_stmt(MythrilContext* ctx, Parser* p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
     return node;
