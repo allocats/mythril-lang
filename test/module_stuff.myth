@@ -3,5 +3,5 @@ module std::io;
 import std::mem;
 
 fn main(): void {
-    let x: i32;
+    syscall(1, 1, "hello world", 11);
 }

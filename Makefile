@@ -7,13 +7,14 @@ BIN_DIR   = $(BUILD_DIR)/bin
 
 MYTHRIL = $(BIN_DIR)/mythril
 
-SRCS = $(wildcard $(SRC_DIR)/*.c) 				\
-       $(wildcard $(SRC_DIR)/arena/*.c) 		\
-       $(wildcard $(SRC_DIR)/ast/*.c) 			\
-       $(wildcard $(SRC_DIR)/ast_parser/*.c) 	\
-       $(wildcard $(SRC_DIR)/diagnostics/*.c) 	\
-       $(wildcard $(SRC_DIR)/hash/*.c) 			\
-       $(wildcard $(SRC_DIR)/lexer/*.c)			\
+SRCS = $(wildcard $(SRC_DIR)/*.c) 						\
+       $(wildcard $(SRC_DIR)/arena/*.c) 				\
+       $(wildcard $(SRC_DIR)/ast/*.c) 					\
+       $(wildcard $(SRC_DIR)/ast_parser/*.c) 			\
+       $(wildcard $(SRC_DIR)/ast_parser/precedence/*.c)	\
+       $(wildcard $(SRC_DIR)/diagnostics/*.c) 			\
+       $(wildcard $(SRC_DIR)/hash/*.c) 					\
+       $(wildcard $(SRC_DIR)/lexer/*.c)					\
        $(wildcard $(SRC_DIR)/tokens/*.c)
 
 OBJECTS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)

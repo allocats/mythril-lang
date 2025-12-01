@@ -13,6 +13,7 @@
     X(AST_ENUM_DECL)        \
     X(AST_IMPL_DECL)        \
     X(AST_FUNCTION_DECL)    \
+    X(AST_STATIC_DECL)      \
     X(AST_CONST_DECL)       \
     X(AST_VAR_DECL)         \
                             \
@@ -20,8 +21,6 @@
     X(AST_ASSIGNMENT)       \
     X(AST_IF_STMT)          \
     X(AST_MATCH_STMT)       \
-    X(AST_FOR_LOOP)         \
-    X(AST_WHILE_LOOP)       \
     X(AST_LOOP_STMT)        \
     X(AST_BREAK_STMT)       \
     X(AST_CONTINUE_STMT)    \
@@ -172,6 +171,13 @@ typedef struct {
 } AstVarDecl;
 
 typedef struct {
+    AstSlice identifier;
+    AstType* type;
+
+    AstNode* value;
+} AstStaticDecl;
+
+typedef struct {
     AstNode* lvalue;
 
     TokenKind op;
@@ -285,6 +291,7 @@ typedef struct AstNode {
         AstEnumDecl         enum_decl;
         AstImplDecl         impl_decl;
         AstFunctionDecl     function_decl;
+        AstStaticDecl       static_decl;
         AstConstDecl        const_decl;
         AstVarDecl          var_decl;
         
@@ -292,8 +299,6 @@ typedef struct AstNode {
         AstAssignment       assignment;
         AstIfStmt           if_stmt;
         AstMatchStmt        match_stmt;
-        // AstForLoop          for_loop;
-        // AstWhileLoop        while_loop;
         AstLoopStmt         loop_stmt;
         AstBreakStmt        break_stmt;
         AstContinueStmt     continue_stmt;

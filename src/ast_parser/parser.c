@@ -1,9 +1,13 @@
 #include "parser.h"
 
+#include "precedence/precedence.h"
+#include "precedence/types.h"
+
 #include "../arena/arena.h"
 #include "../ast/ast.h"
 #include "../diagnostics/diagnostics.h"
 
+#include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -281,11 +285,72 @@ AstNode* parse_function_decl(MythrilContext* ctx, Parser* p) {
 AstNode* parse_const_decl(MythrilContext* ctx, Parser* p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
+    node -> kind = AST_CONST_DECL;
+
+    parser_advance(p);
+
+    if (!parser_require(ctx, p, TOK_IDENTIFIER, "constant name")) {
+        return parser_fail(p, node);
+    }
+
+    Token* name = parser_advance(p);
+
+    if (!parser_expect(ctx, p, TOK_COLON, "':' between constant and type")) {
+        return parser_fail(p, node);
+    }
+
+    node -> const_decl.identifier = *ast_make_slice_from_token(p -> arena, name);
+    node -> const_decl.type = parse_type(ctx, p);
+    node -> const_decl.value = nullptr;
+
+    if (node -> const_decl.type == nullptr) {
+        return parser_fail(p, node);
+    }
+
+    if (!parser_expect(ctx, p, TOK_EQUALS, "'=' constant must have constant value")) {
+        return parser_fail(p, node);
+    }
+
+    node -> const_decl.value = parse_expression(ctx, p);
+
     return node;
 }
 
 AstNode* parse_static_decl(MythrilContext* ctx, Parser* p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+    node -> kind = AST_STATIC_DECL;
+
+    parser_advance(p);
+
+    if (!parser_require(ctx, p, TOK_IDENTIFIER, "variable name")) {
+        return parser_fail(p, node);
+    }
+
+    Token* name = parser_advance(p);
+
+    if (!parser_expect(ctx, p, TOK_COLON, "':' between identifer and type")) {
+        return parser_fail(p, node);
+    }
+
+    node -> static_decl.identifier = *ast_make_slice_from_token(p -> arena, name);
+    node -> static_decl.type = parse_type(ctx, p);
+    node -> static_decl.value = nullptr;
+
+    if (node -> static_decl.type == nullptr) {
+        return parser_fail(p, node);
+    }
+
+    if (parser_check(p, TOK_SEMI_COLON)) {
+        parser_advance(p);
+        return node;
+    }
+
+    if (!parser_expect(ctx, p, TOK_EQUALS, "'=' or ';'")) {
+        return parser_fail(p, node);
+    }
+
+    node -> static_decl.value = parse_expression(ctx, p);
 
     return node;
 }
@@ -350,7 +415,13 @@ AstVec parse_block(MythrilContext* ctx, Parser* p) {
     }
 
     if (vec.count == 0) {
-        // diag_warning(ctx -> diag_ctx, SourceLocation loc, const char *fmt, ...)
+        SourceLocation location = source_location_from_token(
+            ctx -> diag_ctx -> path,
+            ctx -> buffer_start,
+            parser_previous(p) 
+        );
+
+        diag_warning(ctx -> diag_ctx, location, "empty function block");
     }
 
     return vec;
@@ -358,6 +429,8 @@ AstVec parse_block(MythrilContext* ctx, Parser* p) {
 
 AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
     AstNode* node = nullptr;
+
+    bool needs_semicolon = true;
 
     switch (parser_peek(p) -> kind) {
         case TOK_LET: {
@@ -374,14 +447,26 @@ AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
 
         case TOK_LOOP: {
             node = parse_loop_stmt(ctx, p);
+            needs_semicolon = false;
         } break;
 
         case TOK_RETURN: {
             node = parse_return_stmt(ctx, p);
         } break;
 
-        default: {
+        case TOK_EOP: {
+            return node;
         } break;
+
+        default: {
+            node = arena_alloc(p -> arena, sizeof(*node));
+            parser_error_at_current(ctx, p, "unexpected statement", "plink");
+            return parser_fail(p, node);
+        } break;
+    }
+
+    if (needs_semicolon && !parser_expect(ctx, p, TOK_SEMI_COLON, ";")) {
+        return parser_fail(p, node);
     }
 
     return node;
@@ -395,9 +480,264 @@ AstNode* parse_loop_stmt(MythrilContext* ctx, Parser* p) {
 }
 
 AstNode* parse_expression(MythrilContext* ctx, Parser* p) {
-    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+    AstNode* node = parse_expr_prec(ctx, p, 0);
+
+    if (node -> kind == AST_ERROR) {
+        return parser_fail(p, node);
+    }
+
+    // if (!parser_expect(ctx, p, TOK_SEMI_COLON, ";")) {
+    //     return parser_fail(p, node);
+    // }
 
     return node;
+}
+
+AstNode* parse_expr_prec(MythrilContext* ctx, Parser* p, u32 min_prec) {
+    AstNode* left = parse_primary(ctx, p);
+
+    while (is_binary_operator(parser_peek(p) -> kind)) {
+        TokenKind op_kind = parser_peek(p) -> kind;
+        u8 prec = get_precedence(op_kind);
+
+        if (prec < min_prec) {
+            break;
+        }
+
+        Token* op = parser_advance(p);
+
+        u8 next_prec = prec + (is_right_associative(op_kind) ? 0 : 1);
+
+        AstNode* right = parse_expr_prec(ctx, p, next_prec);
+
+        AstNode* bin_op = arena_alloc(p -> arena, sizeof(*bin_op));
+
+        bin_op -> kind = AST_BINARY;
+        bin_op -> binary.left = left;
+        bin_op -> binary.op = op -> kind;
+        bin_op -> binary.right = right;
+
+        left = bin_op;
+    }
+
+    return left;
+}
+
+AstNode* parse_primary(MythrilContext* ctx, Parser* p) {
+    Token current = *parser_peek(p);
+
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+    if (is_prefix_operator(current.kind)) {
+        Token op = *parser_advance(p);
+
+        AstNode* operand = parse_expr_prec(ctx, p, UNARY_PRECEDENCE);
+
+        AstNode* unary_op = arena_alloc(p -> arena, sizeof(*unary_op));
+
+        unary_op -> kind = AST_UNARY;
+
+        unary_op -> unary.op = op.kind;
+        unary_op -> unary.operand = operand;
+
+        return parse_postfix(ctx, p, unary_op);
+    }
+
+    if (current.kind == TOK_LITERAL_NUMBER) {
+        Token token = *parser_advance(p);
+        
+        node -> kind = AST_LITERAL;
+
+        node -> literal.kind = TOK_LITERAL_NUMBER;
+        node -> literal.value = *ast_make_slice_from_token(p -> arena, &token);
+
+        return parse_postfix(ctx, p, node);
+    }
+
+    if (current.kind == TOK_STRING_DELIM) {
+        parser_advance(p);
+        
+        Token token = *parser_advance(p);
+        
+        node -> kind = AST_LITERAL;
+
+        node -> literal.kind = TOK_LITERAL_STRING;
+        node -> literal.value = *ast_make_slice_from_token(p -> arena, &token);
+
+        printf("debug = %s\n", TOKEN_KIND_STRINGS[parser_peek(p)->kind]);
+
+        if (!parser_expect(ctx, p, TOK_STRING_DELIM, "closing '\"'")) {
+            return parser_fail(p, node);
+        }
+
+        return parse_postfix(ctx, p, node);
+    }
+
+    if (current.kind == TOK_TRUE || current.kind == TOK_FALSE) {
+        Token token = *parser_advance(p);
+        
+        node -> kind = AST_LITERAL;
+
+        node -> literal.kind = token.kind;
+        node -> literal.value = *ast_make_slice_from_token(p -> arena, &token);
+
+        return parse_postfix(ctx, p, node);
+    }
+
+    if (current.kind == TOK_NULL) {
+        Token token = *parser_advance(p);
+        
+        AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+        node -> kind = AST_LITERAL;
+
+        node -> literal.kind = TOK_NULL;
+        node -> literal.value = *ast_make_slice_from_token(p -> arena, &token);
+
+        return parse_postfix(ctx, p, node);
+    }
+
+    if (current.kind == TOK_IDENTIFIER) {
+        Token token = *parser_advance(p);
+        
+        node -> kind = AST_IDENTIFIER;
+
+        node -> identifier.value = *ast_make_slice_from_token(p -> arena, &token);
+
+        return parse_postfix(ctx, p, node);
+    }
+
+    if (current.kind == TOK_LEFT_PAREN) {
+        parser_advance(p);
+
+        AstNode* expr = parse_expression(ctx, p);
+
+        if (!parser_expect(ctx, p, TOK_RIGHT_PAREN, "')' after expression")) {
+            return parser_fail(p, expr);
+        }
+
+        return parse_postfix(ctx, p, expr);
+    }
+
+    parser_error_at_current(
+        ctx,
+        p,
+        "expected an expression",
+        "add an expression"
+    );
+
+    return parser_fail(p, node);
+}
+
+AstNode* parse_postfix(MythrilContext* ctx, Parser* p, AstNode* node) {
+    while (true) {
+        Token current = *parser_peek(p);
+
+        if (current.kind == TOK_LEFT_PAREN) {
+            parser_advance(p);
+
+            AstNode* call = arena_alloc(p -> arena, sizeof(*call));
+
+            call -> kind = AST_FUNCTION_CALL;
+
+            call -> function_call.identifier = node -> identifier.value;
+            call -> function_call.args.items = arena_alloc(p -> arena, sizeof(AstNode*) * 8);
+            call -> function_call.args.count = 0;
+            call -> function_call.args.capacity = 8;
+
+            while (!parser_check(p, TOK_RIGHT_PAREN)) {
+                AstNode* argument = parse_expression(ctx, p);
+
+                if (call -> function_call.args.count >= call -> function_call.args.capacity) {
+                    usize old_size = sizeof(AstNode*) * call -> function_call.args.capacity;
+                    usize new_size = old_size * 2;
+
+                    call -> function_call.args.items = arena_realloc(
+                        p -> arena,
+                        call -> function_call.args.items,
+                        old_size,
+                        new_size
+                    );
+                }
+
+                call -> function_call.args.items[call -> function_call.args.count++] = argument;
+
+                if (parser_check(p, TOK_RIGHT_PAREN)) {
+                    break;
+                }
+
+                if (!parser_expect(ctx, p, TOK_COMMA, "',' between arguments")) {
+                    return parser_fail(p, node);
+                }
+            }
+
+            parser_expect(ctx, p, TOK_RIGHT_PAREN, "')' after arguments");
+
+            node = call;
+            continue;
+        }
+
+        if (current.kind == TOK_LEFT_SQUARE) {
+            parser_advance(p);
+            
+            AstNode* index_expr = parse_expression(ctx, p);
+
+            if (!parser_expect(ctx, p, TOK_RIGHT_SQUARE, "expected ']' after index")) {
+                return parser_fail(p, node);
+            }
+
+            AstNode* index = arena_alloc(p -> arena, sizeof(*index));
+
+            index -> kind = AST_ARRAY_INDEX;
+
+            index -> array_index.array = node;
+            index -> array_index.index = index_expr;
+
+            node = index;
+            continue;
+        }
+
+        if (current.kind == TOK_DOT) {
+            parser_advance(p);
+            
+            Token member = *parser_advance(p); 
+
+            if (member.kind != TOK_IDENTIFIER) {
+                parser_error_at_current(ctx, p, "expected identifier", "add object identifier");
+                return parser_fail(p, node);
+            }
+
+            AstNode* access = arena_alloc(p -> arena, sizeof(*access));
+
+            access -> kind = AST_MEMBER_ACCESS;
+
+            access -> member_access.object = node;
+            access -> member_access.member = *ast_make_slice_from_token(p -> arena, &member);
+
+            node = access;
+            continue;
+        }
+
+        if (current.kind == TOK_PLUS_PLUS || current.kind == TOK_MINUS_MINUS) {
+            // Token op = *parser_advance(p);
+            //
+            // AstNode* postfix = arena_alloc(p -> arena, sizeof(*postfix));
+            //
+            // postfix -> kind = AST_POSTFIX;
+            //
+            // postfix -> postfix.operand = expr;
+            // postfix -> postfix.op = op.type;
+            //
+            // expr = postfix;
+            //
+            // continue;
+        }
+
+        break;
+    }
+
+    return node;
+
 }
 
 AstNode* parse_return_stmt(MythrilContext* ctx, Parser* p) {

@@ -133,6 +133,7 @@ i32 main(i32 argc, char* argv[]) {
 
     #ifdef MYTHRIL_DEBUG
         print_tokens(tokens);
+        print_program(&program);
     #endif /* ifdef MYTHRIL_DEBUG */
 
     printf("\n");
