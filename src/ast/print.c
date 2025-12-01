@@ -357,7 +357,7 @@ void print_ast_node(AstNode* node, int indent) {
 
     case AST_LITERAL:
         print_indent(indent+1);
-        printf("literal %d ", node->literal.kind);
+        printf("literal %d: ", node->literal.kind);
         print_slice(node->literal.value);
         printf("\n");
         break;

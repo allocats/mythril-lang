@@ -465,7 +465,7 @@ AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
         } break;
     }
 
-    if (needs_semicolon && !parser_expect(ctx, p, TOK_SEMI_COLON, ";")) {
+    if (needs_semicolon && !parser_expect(ctx, p, TOK_SEMI_COLON, "';'")) {
         return parser_fail(p, node);
     }
 
@@ -485,10 +485,6 @@ AstNode* parse_expression(MythrilContext* ctx, Parser* p) {
     if (node -> kind == AST_ERROR) {
         return parser_fail(p, node);
     }
-
-    // if (!parser_expect(ctx, p, TOK_SEMI_COLON, ";")) {
-    //     return parser_fail(p, node);
-    // }
 
     return node;
 }
@@ -554,21 +550,13 @@ AstNode* parse_primary(MythrilContext* ctx, Parser* p) {
         return parse_postfix(ctx, p, node);
     }
 
-    if (current.kind == TOK_STRING_DELIM) {
-        parser_advance(p);
-        
+    if (current.kind == TOK_LITERAL_STRING) {
         Token token = *parser_advance(p);
         
         node -> kind = AST_LITERAL;
 
         node -> literal.kind = TOK_LITERAL_STRING;
         node -> literal.value = *ast_make_slice_from_token(p -> arena, &token);
-
-        printf("debug = %s\n", TOKEN_KIND_STRINGS[parser_peek(p)->kind]);
-
-        if (!parser_expect(ctx, p, TOK_STRING_DELIM, "closing '\"'")) {
-            return parser_fail(p, node);
-        }
 
         return parse_postfix(ctx, p, node);
     }
@@ -737,7 +725,6 @@ AstNode* parse_postfix(MythrilContext* ctx, Parser* p, AstNode* node) {
     }
 
     return node;
-
 }
 
 AstNode* parse_return_stmt(MythrilContext* ctx, Parser* p) {

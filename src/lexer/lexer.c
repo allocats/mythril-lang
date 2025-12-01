@@ -372,9 +372,19 @@ char* parse_operator(MythrilContext* ctx, char* cursor) {
     token -> kind = TOK_ERROR;
 
     DiagContext* diag_ctx = ctx -> diag_ctx;
-    SourceLocation location = source_location_from_token(diag_ctx -> path, ctx -> buffer_start, token);
+    SourceLocation location = source_location_from_token(
+        diag_ctx -> path,
+        ctx -> buffer_start,
+        token
+    );
 
-    diag_error(diag_ctx, location, "unknown token found '%.*s'", token -> length, token -> lexeme); 
+    diag_error(
+        diag_ctx,
+        location,
+        "unknown token found '%.*s'",
+        token -> length,
+        token -> lexeme
+    ); 
 
     return cursor;
 }
@@ -422,36 +432,47 @@ char* parse_string_literal(MythrilContext* ctx, char* cursor) {
 
     extend_vec(tokens, arena);
 
-    Token* opening_delimiter = &tokens -> items[tokens -> count++];
+    const char* start = cursor;
+    cursor++;
 
-    opening_delimiter -> kind = TOK_STRING_DELIM;
-    opening_delimiter -> lexeme = cursor;
-    opening_delimiter -> length = 1;
-
-    const char* start = ++cursor;
-
-    while (!IS_STRING_DELIMS(*cursor)) {
-        cursor++;
-
-        if (*(cursor - 1) == '\\' && *cursor == '\"') {
+    while (*cursor != '\0' && *cursor != '\n' && *cursor != '\"') {
+        if (*cursor == '\\' && *(cursor + 1) != '\0') {
+            cursor += 2;
+        } else {
             cursor++;
         }
     }
 
-    const char* end = cursor;
-    const usize len = end - start;
+    if (*cursor != '"') {
+        Token* token = &ctx->tokens->items[ctx->tokens->count++];
 
-    Token* token = &tokens -> items[tokens -> count++];
+        token -> kind = TOK_ERROR;
+        token -> lexeme = start;
+        token -> length = cursor - start;
+
+        SourceLocation location = source_location_from_token(
+            ctx -> diag_ctx -> path,
+            ctx -> buffer_start,
+            token
+        );
+
+        diag_error_help(
+            ctx -> diag_ctx,
+            location,
+            "unterminated string",
+            "add '\"' to terminate the string"
+        );
+
+        return cursor;
+    }
+
+    cursor++;
+
+    Token* token = &ctx -> tokens -> items[ctx -> tokens -> count++];
 
     token -> kind = TOK_LITERAL_STRING;
     token -> lexeme = start;
-    token -> length = len;
-
-    Token* closing_delimiter = &tokens -> items[tokens -> count++];
-
-    closing_delimiter -> kind = TOK_STRING_DELIM;
-    closing_delimiter -> lexeme = cursor++;
-    closing_delimiter -> length = 1;
+    token -> length = cursor - start;
 
     return cursor;
 }
@@ -485,9 +506,19 @@ char* parse_invalid_tokens(MythrilContext* ctx, char* cursor) {
     token -> length = len;
 
     DiagContext* diag_ctx = ctx -> diag_ctx;
-    SourceLocation location = source_location_from_token(diag_ctx -> path, ctx -> buffer_start, token);
+    SourceLocation location = source_location_from_token(
+        diag_ctx -> path,
+        ctx -> buffer_start,
+        token
+    );
 
-    diag_error(diag_ctx, location, "unknown token found '%.*s'", token -> length, token -> lexeme); 
+    diag_error(
+        diag_ctx,
+        location,
+        "unknown token found '%.*s'",
+        token -> length,
+        token -> lexeme
+    ); 
 
     return cursor;
 }
