@@ -67,14 +67,8 @@ pattern     = IDENTIFIER
 match_stmt  = "match" expression "{" { pattern ":" block } [ "_" ":" block ] "}" ;  
   
   
-for_init      = var_decl_no_semi
-              | assignment_no_semi
-              | expression ;
-
-for_stmt      = "for" for_init ";" expression ";" expression block ;
-
 loop_stmt     = "loop" block ;  
-
+for_stmt      = "for" IDENTIFIER "=" expression "";" expression ";" expression block ;
 while_stmt    = "while" expression block ;
 
 break_stmt    = "break" ";" ;  
