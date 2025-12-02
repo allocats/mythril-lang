@@ -18,6 +18,7 @@ void parser_recover_sync(Parser* p) {
     while (
         !parser_check(p, TOK_SEMI_COLON)    &&
         !parser_check(p, TOK_RIGHT_BRACE)   &&
+        !parser_check(p, TOK_RIGHT_PAREN)   &&
         !parser_check(p, TOK_EOF) 
     ) {
         if (
@@ -32,12 +33,6 @@ void parser_recover_sync(Parser* p) {
             break;
         }
 
-        parser_advance(p);
-    }
-
-    if (
-        parser_check(p, TOK_SEMI_COLON)
-    ) {
         parser_advance(p);
     }
 }
@@ -454,6 +449,10 @@ AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
             node = parse_return_stmt(ctx, p);
         } break;
 
+        case TOK_EOF: {
+            parser_advance(p);
+        } break;
+
         case TOK_EOP: {
             return node;
         } break;
@@ -607,7 +606,7 @@ AstNode* parse_primary(MythrilContext* ctx, Parser* p) {
         return parse_postfix(ctx, p, expr);
     }
 
-    parser_error_at_current(
+    parser_error_after_previous(
         ctx,
         p,
         "expected an expression",
@@ -729,6 +728,19 @@ AstNode* parse_postfix(MythrilContext* ctx, Parser* p, AstNode* node) {
 
 AstNode* parse_return_stmt(MythrilContext* ctx, Parser* p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+    node -> kind = AST_RETURN_STMT;
+    node -> return_stmt.expression = nullptr;
+
+    parser_advance(p);
+
+    if (!parser_check(p, TOK_SEMI_COLON)) {
+        node -> return_stmt.expression = parse_expression(ctx, p);
+
+        if (node -> return_stmt.expression -> kind == AST_ERROR) {
+            return parser_fail(p, node);
+        }
+    } 
 
     return node;
 }

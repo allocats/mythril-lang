@@ -215,7 +215,7 @@ void print_ast_node(AstNode* node, int indent) {
         printf("assignment:\n");
         print_ast_node(node->assignment.lvalue, indent+2);
         print_indent(indent+2);
-        printf("op: %d\n", node->assignment.op);
+        printf("op: %s\n", TOKEN_KIND_STRINGS[node->assignment.op]);
         print_ast_node(node->assignment.rvalue, indent+2);
     } break;
 
@@ -312,13 +312,13 @@ void print_ast_node(AstNode* node, int indent) {
 
     case AST_UNARY:
         print_indent(indent+1);
-        printf("unary op=%d postfix=%d\n", node->unary.op, node->unary.is_postfix);
+        printf("unary op=%s postfix=%d\n", TOKEN_KIND_STRINGS[node->unary.op], node->unary.is_postfix);
         print_ast_node(node->unary.operand, indent+2);
         break;
 
     case AST_BINARY:
         print_indent(indent+1);
-        printf("binary op=%d\n", node->binary.op);
+        printf("binary op=%s\n", TOKEN_KIND_STRINGS[node->binary.op]);
         print_ast_node(node->binary.left, indent+2);
         print_ast_node(node->binary.right, indent+2);
         break;
