@@ -19,6 +19,8 @@ AstNode* parse_var_decl(MythrilContext* ctx, Parser *p);
 AstVec   parse_block(MythrilContext* ctx, Parser* p);
 AstNode* parse_statement(MythrilContext* ctx, Parser* p);
 AstNode* parse_loop_stmt(MythrilContext* ctx, Parser* p);
+AstNode* parse_while_stmt(MythrilContext* ctx, Parser* p);
+AstNode* parse_for_stmt(MythrilContext* ctx, Parser* p);
 
 AstNode* parse_expression(MythrilContext* ctx, Parser* p);
 AstNode* parse_expr_prec(MythrilContext* ctx, Parser* p, u32 prec);

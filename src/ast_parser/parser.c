@@ -22,6 +22,7 @@ void parser_recover_sync(Parser* p) {
         !parser_check(p, TOK_EOF) 
     ) {
         if (
+            parser_check(p, TOK_IDENTIFIER) ||
             parser_check(p, TOK_IMPORT)     ||
             parser_check(p, TOK_STRUCT)     ||
             parser_check(p, TOK_ENUM)       ||
@@ -68,8 +69,8 @@ void parser_error_at_previous(
     const char* help
 ) {
     SourceLocation location = source_location_from_token(
-        p->path,
-        ctx->buffer_start,
+        p -> path,
+        ctx -> buffer_start,
         parser_previous(p)
     );
 
@@ -445,6 +446,16 @@ AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
             needs_semicolon = false;
         } break;
 
+        case TOK_WHILE: {
+            node = parse_while_stmt(ctx, p);
+            needs_semicolon = false;
+        } break;
+
+        case TOK_FOR: {
+            node = parse_for_stmt(ctx, p);
+            needs_semicolon = false;
+        } break;
+
         case TOK_RETURN: {
             node = parse_return_stmt(ctx, p);
         } break;
@@ -474,6 +485,68 @@ AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
 
 AstNode* parse_loop_stmt(MythrilContext* ctx, Parser* p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+    parser_advance(p);
+
+    node -> kind = AST_LOOP_STMT;
+
+    if (!parser_check(p, TOK_LEFT_BRACE)) {
+        parser_error_at_current(
+            ctx,
+            p,
+            "expected '{'",
+            "add '{' here (loop takes no condition)"
+        );
+
+        return parser_fail(p, node);
+    }
+
+    parser_advance(p);
+
+    node -> loop_stmt.block = parse_block(ctx, p);
+
+    return node;
+}
+
+AstNode* parse_while_stmt(MythrilContext* ctx, Parser* p) {
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+    parser_advance(p);
+
+    node -> kind = AST_WHILE_STMT;
+
+    if (parser_check(p, TOK_LEFT_BRACE)) {
+        parser_error_at_previous(
+            ctx,
+            p,
+            "expected expression",
+            "use 'loop' if you want an infinite loop"
+        );
+
+        return parser_fail(p, node);
+    }
+
+    node -> while_stmt.cond = parse_expression(ctx, p);
+
+    if (node -> while_stmt.cond -> kind == AST_ERROR) {
+        return parser_fail(p, node);
+    }
+
+    if (!parser_expect(ctx, p, TOK_LEFT_BRACE, "'{' after while loop condition")) {
+        return parser_fail(p, node);
+    }
+
+    node -> while_stmt.block = parse_block(ctx, p);
+
+    return node;
+}
+
+AstNode* parse_for_stmt(MythrilContext* ctx, Parser* p) {
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+    parser_advance(p);
+
+    // todo: for loop
 
     return node;
 }

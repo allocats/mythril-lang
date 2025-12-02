@@ -259,25 +259,6 @@ void print_ast_node(AstNode* node, int indent) {
     case AST_LOOP_STMT: {
         print_indent(indent+1);
         printf("loop:\n");
-
-        if (node->loop_stmt.init) {
-            print_indent(indent+2);
-            printf("init:\n");
-            print_ast_node(node->loop_stmt.init, indent+3);
-        }
-
-        if (node->loop_stmt.cond) {
-            print_indent(indent+2);
-            printf("cond:\n");
-            print_ast_node(node->loop_stmt.cond, indent+3);
-        }
-
-        if (node->loop_stmt.step) {
-            print_indent(indent+2);
-            printf("step:\n");
-            print_ast_node(node->loop_stmt.step, indent+3);
-        }
-
         print_indent(indent+2);
         printf("block:\n");
         print_ast_vec(&node->loop_stmt.block, indent+3);
