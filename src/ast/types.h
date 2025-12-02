@@ -22,6 +22,8 @@
     X(AST_IF_STMT)          \
     X(AST_MATCH_STMT)       \
     X(AST_LOOP_STMT)        \
+    X(AST_FOR_STMT)         \
+    X(AST_WHILE_STMT)       \
     X(AST_BREAK_STMT)       \
     X(AST_CONTINUE_STMT)    \
     X(AST_RETURN_STMT)      \
@@ -209,12 +211,22 @@ typedef struct {
 } AstMatchStmt;
 
 typedef struct {
+    AstVec block;
+} AstLoopStmt;
+
+typedef struct {
+    AstNode* cond;
+
+    AstVec block;
+} AstWhileStmt;
+
+typedef struct {
     AstNode* init;
     AstNode* cond;
     AstNode* step;
 
     AstVec block;
-} AstLoopStmt;
+} AstForStmt;
 
 typedef struct {
 } AstBreakStmt;
@@ -300,6 +312,8 @@ typedef struct AstNode {
         AstIfStmt           if_stmt;
         AstMatchStmt        match_stmt;
         AstLoopStmt         loop_stmt;
+        AstWhileStmt        while_stmt;
+        AstForStmt          for_stmt;
         AstBreakStmt        break_stmt;
         AstContinueStmt     continue_stmt;
         AstExprStmt         expr_stmt;
