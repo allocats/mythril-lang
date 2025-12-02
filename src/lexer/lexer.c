@@ -84,6 +84,11 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
                 break;
             }
 
+            if (word_match("for", len, start)) {
+                token -> kind = TOK_FOR;
+                break;
+            }
+
             if (word_match("false", len, start)) {
                 token -> kind = TOK_FALSE;
                 break;
@@ -193,6 +198,15 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
         case 'u': {
             if (word_match("uninit", len, start)) {
                 token -> kind = TOK_UNINIT;
+                break;
+            }
+
+            token -> kind = TOK_IDENTIFIER;
+        } break;
+
+        case 'w': {
+            if (word_match("while", len, start)) {
+                token -> kind = TOK_WHILE;
                 break;
             }
 

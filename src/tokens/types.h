@@ -102,6 +102,8 @@
     X(TOK_IF)                       \
     X(TOK_MATCH)                    \
     X(TOK_LOOP)                     \
+    X(TOK_WHILE)                    \
+    X(TOK_FOR)                      \
     X(TOK_IN)                       \
                                     \
     X(TOK_RETURN)                   \
