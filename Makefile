@@ -1,5 +1,5 @@
 CC      = clang
-CFLAGS  = -Wall -Wextra -march=native -g3 -DMYTHRIL_DEBUG
+CFLAGS  = -Wall -Wextra -march=native -g3 
 
 SRC_DIR   = src
 BUILD_DIR = build

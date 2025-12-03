@@ -21,15 +21,17 @@ void parser_recover_sync(Parser* p) {
         !parser_check(p, TOK_RIGHT_PAREN)   &&
         !parser_check(p, TOK_EOF) 
     ) {
+        TokenKind kind = parser_peek(p) -> kind;
+
         if (
-            parser_check(p, TOK_IDENTIFIER) ||
-            parser_check(p, TOK_IMPORT)     ||
-            parser_check(p, TOK_STRUCT)     ||
-            parser_check(p, TOK_ENUM)       ||
-            parser_check(p, TOK_IMPL)       ||
-            parser_check(p, TOK_FUNCTION)   ||
-            parser_check(p, TOK_STATIC)     ||
-            parser_check(p, TOK_CONST)
+            (kind == TOK_IDENTIFIER) ||
+            (kind == TOK_IMPORT)     ||
+            (kind == TOK_STRUCT)     ||
+            (kind == TOK_ENUM)       ||
+            (kind == TOK_IMPL)       ||
+            (kind == TOK_FUNCTION)   ||
+            (kind == TOK_STATIC)     ||
+            (kind == TOK_CONST)
         ) {
             break;
         }
@@ -180,8 +182,56 @@ AstNode* parse_struct_decl(MythrilContext* ctx, Parser* p) {
     return node;
 }
 
+AstNode* parse_impl_fn_decl(MythrilContext* ctx, Parser* p) {
+    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+    node -> kind = AST_FUNCTION_DECL;
+
+    if (!parser_expect(ctx, p, TOK_FUNCTION, "'fn'")) {
+        return parser_fail(p, node);
+    }
+
+    Token* name = parser_peek(p);
+
+    if (name -> kind != TOK_IDENTIFIER) {
+        parser_error_at_current(ctx, p, "expected function name", "add name");
+        return parser_fail(p, node);
+    }
+
+    node -> function_decl.identifier = *ast_make_slice_from_token(p -> arena, name);
+
+    return node;
+}
+
 AstNode* parse_impl_decl(MythrilContext* ctx, Parser* p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+    
+    node -> kind = AST_IMPL_DECL;
+
+    node -> impl_decl.functions.count = 0;
+    node -> impl_decl.functions.capacity = 8;
+    node -> impl_decl.functions.items = arena_alloc(p -> arena, sizeof(AstNode*) * 8);
+
+    parser_advance(p);
+
+    Token* token = parser_peek(p);
+
+    if (token -> kind != TOK_IDENTIFIER) {
+        parser_error_at_current(ctx, p, "expected identifier", "add a valid identifier");
+        return parser_fail(p, node);
+    }
+
+    node -> impl_decl.target = *ast_make_slice_from_token(p -> arena, token);
+
+    parser_advance(p);
+
+    if (!parser_expect(ctx, p, TOK_LEFT_BRACE, "'{'")) {
+        return parser_fail(p, node);
+    }
+
+    while (!parser_check(p, TOK_RIGHT_BRACE)) {
+        AstNode* fn = parse_impl_fn_decl(ctx, p);
+    }
 
     return node;
 }
@@ -191,8 +241,8 @@ AstNode* parse_function_decl(MythrilContext* ctx, Parser* p) {
 
     node -> kind = AST_FUNCTION_DECL;
     node -> function_decl.count = 0;
-    node -> function_decl.capacity = 64;
-    node -> function_decl.parameters = arena_alloc(p -> arena, sizeof(AstParameter) * 64);
+    node -> function_decl.capacity = 8;
+    node -> function_decl.parameters = arena_alloc(p -> arena, sizeof(AstParameter) * 8);
 
     parser_advance(p);
 
@@ -397,6 +447,8 @@ AstVec parse_block(MythrilContext* ctx, Parser* p) {
         .capacity = 8
     };
 
+    // NEED TO ADD DEPTH FOR BRACES/SCOPE
+
     while (!parser_check(p, TOK_RIGHT_BRACE)) {
         AstNode* statement = parse_statement(ctx, p);
 
@@ -544,9 +596,31 @@ AstNode* parse_while_stmt(MythrilContext* ctx, Parser* p) {
 AstNode* parse_for_stmt(MythrilContext* ctx, Parser* p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
-    parser_advance(p);
+    node -> kind = AST_FOR_STMT;
 
-    // todo: for loop
+    // todo: for loop 
+    // "for i: i32 = 0; i < 20; i++ {}"
+
+
+    node -> for_stmt.init = parse_var_decl(ctx, p);
+
+    if (!parser_expect(ctx, p, TOK_SEMI_COLON, "';'")) {
+        return parser_fail(p, node);
+    }
+
+    node -> for_stmt.cond = parse_expression(ctx, p);
+
+    if (!parser_expect(ctx, p, TOK_SEMI_COLON, "';'")) {
+        return parser_fail(p, node);
+    }
+
+    node -> for_stmt.step = parse_expression(ctx, p);
+
+    if (!parser_expect(ctx, p, TOK_LEFT_BRACE, "'{'")) {
+        return parser_fail(p, node);
+    }
+
+    node -> for_stmt.block = parse_block(ctx, p);
 
     return node;
 }
