@@ -107,6 +107,8 @@
     X(TOK_IN)                       \
                                     \
     X(TOK_RETURN)                   \
+    X(TOK_BREAK)                    \
+    X(TOK_CONTINUE)                 \
                                     \
     X(TOK_EOF)                      \
     X(TOK_EOP)                      \

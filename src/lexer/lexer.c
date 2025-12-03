@@ -60,9 +60,23 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
     token -> length = len;
 
     switch (*start) {
+        case 'b': {
+            if (word_match("break", len, start)) {
+                token -> kind = TOK_BREAK;
+                break;
+            }
+
+            token -> kind = TOK_IDENTIFIER;
+        } break;
+
         case 'c': {
             if (word_match("const", len, start)) {
                 token -> kind = TOK_CONST;
+                break;
+            }
+
+            if (word_match("continue", len, start)) {
+                token -> kind = TOK_CONTINUE;
                 break;
             }
 
