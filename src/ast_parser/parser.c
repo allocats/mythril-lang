@@ -181,27 +181,27 @@ AstNode* parse_struct_decl(MythrilContext* ctx, Parser* p) {
 
     return node;
 }
-
-AstNode* parse_impl_fn_decl(MythrilContext* ctx, Parser* p) {
-    AstNode* node = arena_alloc(p -> arena, sizeof(*node));
-
-    node -> kind = AST_FUNCTION_DECL;
-
-    if (!parser_expect(ctx, p, TOK_FUNCTION, "'fn'")) {
-        return parser_fail(p, node);
-    }
-
-    Token* name = parser_peek(p);
-
-    if (name -> kind != TOK_IDENTIFIER) {
-        parser_error_at_current(ctx, p, "expected function name", "add name");
-        return parser_fail(p, node);
-    }
-
-    node -> function_decl.identifier = *ast_make_slice_from_token(p -> arena, name);
-
-    return node;
-}
+//
+// AstNode* parse_impl_fn_decl(MythrilContext* ctx, Parser* p) {
+//     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+//
+//     node -> kind = AST_FUNCTION_DECL;
+//
+//     if (!parser_expect(ctx, p, TOK_FUNCTION, "'fn'")) {
+//         return parser_fail(p, node);
+//     }
+//
+//     Token* name = parser_peek(p);
+//
+//     if (name -> kind != TOK_IDENTIFIER) {
+//         parser_error_at_current(ctx, p, "expected function name", "add name");
+//         return parser_fail(p, node);
+//     }
+//
+//     node -> function_decl.identifier = *ast_make_slice_from_token(p -> arena, name);
+//
+//     return node;
+// }
 
 AstNode* parse_impl_decl(MythrilContext* ctx, Parser* p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
@@ -230,7 +230,30 @@ AstNode* parse_impl_decl(MythrilContext* ctx, Parser* p) {
     }
 
     while (!parser_check(p, TOK_RIGHT_BRACE)) {
-        AstNode* fn = parse_impl_fn_decl(ctx, p);
+        AstNode* fn = parse_function_decl(ctx, p);
+
+        if (fn -> kind == AST_ERROR) {
+            return parser_fail(p, node);
+        }
+
+        if (node -> impl_decl.functions.count >= node -> impl_decl.functions.capacity) {
+            usize old_cap = node -> impl_decl.functions.capacity;
+            usize new_cap = node -> impl_decl.functions.capacity * 2;
+
+            usize old_size = old_cap * sizeof(AstNode*);
+            usize new_size = new_cap * sizeof(AstNode*);
+
+            node -> impl_decl.functions.items = arena_realloc(
+                p -> arena,
+                node -> impl_decl.functions.items,
+                old_size,
+                new_size
+            );
+
+            node -> impl_decl.functions.capacity = new_cap;
+        }
+
+        node -> impl_decl.functions.items[node -> impl_decl.functions.count++] = fn;
     }
 
     return node;

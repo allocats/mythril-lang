@@ -52,7 +52,7 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
         cursor++;
     }
 
-    const usize len = cursor - start;
+    const u32 len = cursor - start;
 
     Token* token = &tokens -> items[tokens -> count++];
 
@@ -313,7 +313,7 @@ char* parse_operator(MythrilContext* ctx, char* cursor) {
     }
 
     const char* end = cursor;
-    const usize len = end - start;
+    const u32 len = end - start;
 
     Token* token = &tokens -> items[tokens -> count++];
     token -> lexeme = start;
@@ -443,7 +443,7 @@ char* parse_number(MythrilContext* ctx, char* cursor) {
     } 
 
     const char* end = cursor;
-    const usize len = end - start;
+    const u32 len = end - start;
 
     Token* token = &tokens -> items[tokens -> count++];
 
@@ -525,7 +525,7 @@ char* parse_invalid_tokens(MythrilContext* ctx, char* cursor) {
     }
 
     const char* end = cursor++;
-    const usize len = end - start;
+    const u32 len = end - start;
 
     Token* token = &tokens -> items[tokens -> count++];
 
@@ -552,7 +552,7 @@ char* parse_invalid_tokens(MythrilContext* ctx, char* cursor) {
 }
 
 char* skip_single_line_comment(MythrilContext* ctx, char* cursor) {
-    while (*cursor != '\n') {
+    while (cursor < ctx -> buffer_end && *cursor != '\n') {
         cursor++;
     }
 

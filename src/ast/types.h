@@ -29,6 +29,8 @@
     X(AST_RETURN_STMT)      \
     X(AST_EXPR_STMT)        \
                             \
+    X(AST_BLOCK)            \
+                            \
     /* expressions */       \
     X(AST_UNARY)            \
     X(AST_BINARY)           \
@@ -43,7 +45,8 @@
     X(AST_PATTERN_LITERAL)  \
     X(AST_PATTERN_VARIANT)  \
     X(AST_PATTERN_WILDCARD) \
-    X(AST_ERROR)
+                            \
+    X(AST_ERROR) /* set node to error if error is present*/
 
 typedef enum {
     X_AST(GENERATE_ENUM)
@@ -72,10 +75,11 @@ typedef struct {
     AstNode** items;
     usize capacity;
     usize count;
+    b8 error;
 } AstVec;
 
 typedef struct {
-    char* ptr;
+    const char* ptr;
     usize len;
     u64 hash;
 } AstSlice;

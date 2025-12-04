@@ -1,3 +1,0 @@
-fn write(fd: i32, buffer: char*, count: usize): i64 {
-    return syscall(1, fd, buffer, count);
-}

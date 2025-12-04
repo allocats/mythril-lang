@@ -13,6 +13,6 @@ void print_tokens(Tokens tokens) {
         printf("Token %zu:\n", i);
         printf("  Kind: %s\n", TOKEN_KIND_STRINGS[token.kind]);
         printf("  Lexeme: \"%.*s\"\n", (i32) length, lexeme);
-        printf("  Length: %zu\n\n", token.length);
+        printf("  Length: %u\n\n", token.length);
     }
 }

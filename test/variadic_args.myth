@@ -1,5 +1,0 @@
-fn va_args_func(...[const n: u32 = 5]): void {
-    for i = 0; i < n; i++ {
-        println("Arg {}: found {}", i, va_args[i]);
-    }
-}

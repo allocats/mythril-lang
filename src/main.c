@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -57,6 +58,12 @@ i32 map_file(FileBuffer* file_buffer, char* path) {
 }
 
 i32 main(i32 argc, char* argv[]) {
+    #ifdef MYTHRIL_DEBUG
+    
+    static_assert(sizeof(Token) == 16, "Token is not 16 bytes");
+
+    #endif /* ifdef MYTHRIL_DEBUG */
+
     if (argc == 1) {
         fprintf(stderr, "Usage: %s <files>\n", argv[0]);
         return 1;

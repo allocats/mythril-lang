@@ -1,7 +1,0 @@
-module std::io;
-
-import std::mem;
-
-fn main(): void {
-    syscall(1, 1, "hello world", 11);
-}
