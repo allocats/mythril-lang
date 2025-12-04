@@ -1,5 +1,6 @@
 CC      = clang
-CFLAGS  = -Wall -Wextra -march=native -g3 
+CFLAGS  = -Wall -Wextra -march=native
+DFLAGS 	= -g3 -DMYTHRIL_DEBUG
 
 SRC_DIR   = src
 BUILD_DIR = build
@@ -7,19 +8,15 @@ BIN_DIR   = $(BUILD_DIR)/bin
 
 MYTHRIL = $(BIN_DIR)/mythril
 
-SRCS = $(wildcard $(SRC_DIR)/*.c) 						\
-       $(wildcard $(SRC_DIR)/arena/*.c) 				\
-       $(wildcard $(SRC_DIR)/ast/*.c) 					\
-       $(wildcard $(SRC_DIR)/ast_parser/*.c) 			\
-       $(wildcard $(SRC_DIR)/ast_parser/precedence/*.c)	\
-       $(wildcard $(SRC_DIR)/diagnostics/*.c) 			\
-       $(wildcard $(SRC_DIR)/hash/*.c) 					\
-       $(wildcard $(SRC_DIR)/lexer/*.c)					\
-       $(wildcard $(SRC_DIR)/tokens/*.c)
-
+SRCS 	= $(shell find $(SRC_DIR) -name "*.c")
 OBJECTS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
+.PHONY: all clean debug
+
 all: $(MYTHRIL)
+
+debug: CFLAGS += $(DFLAGS)
+debug: $(MYTHRIL)
 
 $(MYTHRIL): $(OBJECTS) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $(OBJECTS)
@@ -34,6 +31,5 @@ $(BUILD_DIR):
 $(BIN_DIR): | $(BUILD_DIR)
 	@mkdir -p $@
 
-.PHONY: clean
 clean:
 	@rm -rvf $(BUILD_DIR) > /dev/null
