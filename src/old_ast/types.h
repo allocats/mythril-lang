@@ -29,6 +29,8 @@
     X(AST_RETURN_STMT)      \
     X(AST_EXPR_STMT)        \
                             \
+    X(AST_BLOCK)            \
+                            \
     /* expressions */       \
     X(AST_UNARY)            \
     X(AST_BINARY)           \
@@ -68,6 +70,13 @@ static const char* TYPE_KIND_STRINGS[] = {
 };
 
 typedef struct AstNode AstNode;
+
+typedef struct {
+    AstNode** items;
+    usize capacity;
+    usize count;
+    b8 error;
+} AstVec;
 
 typedef struct {
     const char* ptr;
@@ -112,7 +121,6 @@ typedef struct {
 
 typedef struct {
     AstSlice identifier;
-
     AstStructField* fields;
     usize capacity;
     usize count;
@@ -120,7 +128,6 @@ typedef struct {
 
 typedef struct {
     AstSlice identifier;
-
     AstType** types;
     usize capacity;
     usize count;
@@ -128,7 +135,6 @@ typedef struct {
 
 typedef struct {
     AstSlice identifier;
-
     AstEnumVariant* variants;
     usize capacity;
     usize count;
@@ -136,10 +142,7 @@ typedef struct {
 
 typedef struct {
     AstSlice target;
-
-    AstNode** functions;
-    usize fn_capacity;
-    usize fn_count;
+    AstVec functions;
 } AstImplDecl;
 
 typedef struct {
@@ -149,17 +152,13 @@ typedef struct {
 
 typedef struct {
     AstSlice identifier;
-
     AstParameter* parameters;
-    usize param_capacity;
-    usize param_count;
+    usize capacity;
+    usize count;
 
     AstType* return_type;
 
-    // block
-    AstNode** statements;
-    usize stmt_capacity;
-    usize stmt_count;
+    AstVec block;
 } AstFunctionDecl;
 
 typedef struct {
@@ -194,52 +193,35 @@ typedef struct {
 
 typedef struct {
     AstNode* expression;
-    
-    // block
-    AstNode** statements;
-    usize stmt_capacity;
-    usize stmt_count;
+    AstVec then_block;
 
     AstNode* else_stmt;
 } AstIfStmt;
 
 typedef struct {
     AstNode* pattern;
-
-    // block
-    AstNode** statements;
-    usize stmt_capacity;
-    usize stmt_count;
+    AstVec block;
 } AstMatchArm;
 
 typedef struct {
     AstNode* expression;
 
     AstMatchArm* arms;
-    usize arm_capacity;
-    usize arm_count;
+    usize capacity;
+    usize count;
 
-    // block
     // "_: { ... }"
-    AstNode** statements;
-    usize stmt_capacity;
-    usize stmt_count;
+    AstVec default_block;
 } AstMatchStmt;
 
 typedef struct {
-    // block
-    AstNode** statements;
-    usize stmt_capacity;
-    usize stmt_count;
+    AstVec block;
 } AstLoopStmt;
 
 typedef struct {
     AstNode* cond;
 
-    // block
-    AstNode** statements;
-    usize stmt_capacity;
-    usize stmt_count;
+    AstVec block;
 } AstWhileStmt;
 
 typedef struct {
@@ -247,10 +229,7 @@ typedef struct {
     AstNode* cond;
     AstNode* step;
 
-    // block
-    AstNode** statements;
-    usize stmt_capacity;
-    usize stmt_count;
+    AstVec block;
 } AstForStmt;
 
 typedef struct {
@@ -270,6 +249,7 @@ typedef struct {
 typedef struct {
     TokenKind op;
     AstNode* operand;
+    b8 is_postfix;
 } AstUnary;
 
 typedef struct {
@@ -280,9 +260,7 @@ typedef struct {
 
 typedef struct {
     AstSlice identifier;
-    AstNode** arguments;
-    usize arg_capacity;
-    usize arg_count;
+    AstVec args;
 } AstFunctionCall;
 
 typedef struct {
@@ -315,10 +293,7 @@ typedef struct {
 
 typedef struct {
     AstSlice variant;
-
-    AstNode** patterns;
-    usize capacity;
-    usize count;
+    AstVec patterns;
 } AstPatternVariant;
 
 typedef struct AstNode {
@@ -365,7 +340,7 @@ typedef struct AstNode {
 } AstNode;
 
 typedef struct {
-    AstNode** declarations;
+    AstNode* items;
     usize capacity;
     usize count;
 } Program;

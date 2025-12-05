@@ -6,15 +6,13 @@
 #include "../utils/vec.h"
 #include "types.h"
 
-static void extend_declarations(ArenaAllocator* arena, Program* prog);
-
 void parse(MythrilContext* ctx, char** paths, FileBuffer* buffers, usize file_count) {
     Tokens* tokens = ctx -> tokens;
     usize count = tokens -> count;
 
     Program* program = ctx -> program;
 
-    program -> declarations = arena_alloc(ctx -> arena, sizeof(AstNode*) * count);
+    program -> items = arena_alloc(ctx -> arena, sizeof(AstNode) * count);
     program -> capacity = count;
 
     Parser parser = {
@@ -23,23 +21,7 @@ void parse(MythrilContext* ctx, char** paths, FileBuffer* buffers, usize file_co
         .program = program,
         .index = 0,
         .count = count,
-        .path = *paths++,
-        .delimiters = {
-            .items = arena_alloc(
-                ctx -> arena,
-                sizeof(TokenKind) * DELIMITER_STACK_INIT_CAPACITY
-            ),
-            .locations = arena_alloc(
-                ctx -> arena,
-                sizeof(SourceLocation) * DELIMITER_STACK_INIT_CAPACITY
-            ),
-            .contexts = arena_alloc(
-                ctx -> arena,
-                sizeof(const char*) * DELIMITER_STACK_INIT_CAPACITY
-            ),
-            .capacity = DELIMITER_STACK_INIT_CAPACITY,
-            .top = 0
-        }
+        .path = *paths++
     };
 
     u32 buffer_idx = 1;
@@ -47,9 +29,14 @@ void parse(MythrilContext* ctx, char** paths, FileBuffer* buffers, usize file_co
     while (parser.index < parser.count) {
         Token token = *parser_peek(&parser);
 
+        #ifdef MYTHRIL_DEBUG
+            #include <stdio.h>
+
+            printf("debug=%s\n", TOKEN_KIND_STRINGS[token.kind]);
+        #endif
+
         AstNode* node = nullptr;
-        
-        extend_declarations(ctx -> arena, program);
+        extend_vec(program, ctx -> arena);
 
         switch (token.kind) {
             case TOK_MODULE: {
@@ -84,6 +71,10 @@ void parse(MythrilContext* ctx, char** paths, FileBuffer* buffers, usize file_co
                 node = parse_static_decl(ctx, &parser);
             } break;
 
+            case TOK_RIGHT_BRACE: {
+                parser_advance(&parser);
+            } break;
+
             case TOK_EOF: {
                 if (buffer_idx < file_count) {
                     parser.path = *paths++;
@@ -111,15 +102,16 @@ void parse(MythrilContext* ctx, char** paths, FileBuffer* buffers, usize file_co
                 diag_error(
                     ctx -> diag_ctx,
                     location,
-                    "unexpected top level declaration '%.*s'",
+                    "unexpected token '%.*s'",
                     token.length,
                     token.lexeme
                 ); 
+                return;
             } break;
         }
 
         if (node) {
-            program -> declarations[program -> count++] = node;
+            program -> items[program -> count++] = *node;
         }
     }
 }
@@ -127,20 +119,9 @@ void parse(MythrilContext* ctx, char** paths, FileBuffer* buffers, usize file_co
 AstSlice* ast_make_slice_from_token(ArenaAllocator* arena, Token* token) {
     AstSlice* slice = arena_alloc(arena, sizeof(*slice));
 
-    slice -> ptr  = token -> lexeme; 
-    slice -> len  = token -> length; 
+    slice -> ptr = (char*) token -> lexeme; 
+    slice -> len = token -> length; 
     slice -> hash = hash_fnv1a(token -> lexeme, token -> length); 
 
     return slice;
-}
-
-static void extend_declarations(ArenaAllocator* arena, Program* prog) {
-    if (prog -> count < prog -> capacity) {
-        return;
-    }
-
-    usize size = prog -> capacity * sizeof(AstNode*); 
-
-    prog -> declarations = arena_realloc(arena, prog -> declarations, size, size * 2);
-    prog -> capacity *= 2;
 }
