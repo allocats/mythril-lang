@@ -1,0 +1,29 @@
+#include "parser.h"
+#include "types.h"
+
+#include <stdio.h>
+
+void delimiters_push(Parser* p, Token* token, const char* src_ctx) {
+    DelimiterStack* stack = &p -> delimiters;
+
+    if (stack -> top >= DELIMITER_STACK_MAX) {
+        // todo: error
+        fprintf(stderr, "wth is going on");
+        exit(1);
+    }
+
+    stack -> items[stack -> top++] = (Delimiter) {
+        .token = token,
+        .context = src_ctx
+    };
+}
+
+Delimiter* delimiters_pop(Parser* p) {
+    DelimiterStack* stack = &p -> delimiters;
+
+    if (stack -> top < 0) {
+        return nullptr;
+    }
+
+    return &stack -> items[stack -> top--];
+}

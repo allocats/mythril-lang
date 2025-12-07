@@ -8,15 +8,19 @@
 #include "../tokens/types.h"
 #include "../utils/types.h"
 
-#define DELIMITER_STACK_INIT_CAPACITY 32 
+#define DELIMITER_STACK_MAX 128
 
 typedef struct {
-    TokenKind* items; 
-    SourceLocation* locations;
-    const char** contexts;
+    Token* token;
 
-    u32 capacity;
+    /* function name, struct name, etc. might remove this */
+    const char* context;
+} Delimiter;
+
+typedef struct {
     i32 top;
+    u8 _padding[4];
+    Delimiter items[DELIMITER_STACK_MAX];
 } DelimiterStack;
 
 typedef struct {
