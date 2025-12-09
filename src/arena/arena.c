@@ -77,7 +77,9 @@ static ArenaBlock* new_block(size_t default_capacity, size_t size) {
     const size_t aligned_size = align_size(total_size);
 
     ArenaBlock* block = (ArenaBlock*) aligned_alloc(32, aligned_size);
-    assert(block);
+    assert(block && "Buy more ram silly :3");
+
+    memset(block, 0, aligned_size);
 
     block -> next = NULL;
     block -> usage =  0;

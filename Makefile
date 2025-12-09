@@ -11,7 +11,15 @@ MYTHRIL = $(BIN_DIR)/mythril
 SRCS 	= $(shell find $(SRC_DIR) -name "*.c")
 OBJECTS = $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
-.PHONY: all clean debug
+TIDY_CHECKS = -*,\
+			  bugprone-suspicious-*,\
+			  bugprone-infinite-loop,\
+			  bugprone-branch-clone,\
+			  bugprone-dangling-handle,\
+			  clang-analyzer-core.*,\
+			  clang-analyzer-deadcode.*
+
+.PHONY: all check clean debug
 
 all: $(MYTHRIL)
 
@@ -30,6 +38,9 @@ $(BUILD_DIR):
 
 $(BIN_DIR): | $(BUILD_DIR)
 	@mkdir -p $@
+
+check:
+	@clang-tidy $(SRCS) --checks='$(TIDY_CHECKS)' -- $(CFLAGS) -I$(SRC_DIR)
 
 clean:
 	@rm -rvf $(BUILD_DIR) > /dev/null

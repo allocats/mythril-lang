@@ -1,54 +1,58 @@
 #include "parser.h"
 
-void recover_to_top_level_decl(Parser* p) {
-    TokenKind kind = parser_peek(p) -> kind;
+#include "../diagnostics/diagnostics.h"
 
-    while (
-        kind != TOK_MODULE    &&
-        kind != TOK_IMPORT    &&
-        kind != TOK_STRUCT    &&
-        kind != TOK_ENUM      &&
-        kind != TOK_IMPL      &&
-        kind != TOK_FUNCTION  &&
-        kind != TOK_STATIC    &&
-        kind != TOK_CONST     &&
-        kind != TOK_EOF       &&
-        kind != TOK_EOP
-    ) {
-        parser_advance(p);
-        
-        kind = parser_peek(p) -> kind;
-    }
+void error_at_current(MythrilContext* ctx, Parser* p, const char* msg, const char* help) {
+    SourceLocation location = source_location_from_token(
+        p -> path,
+        ctx -> buffer_start,
+        parser_peek(p)
+    );
+
+    diag_error_help(ctx -> diag_ctx, location, msg, help);
 }
 
-void recover_in_path_segment(Parser* p) {
-    TokenKind kind = parser_peek(p) -> kind;
+void error_at_previous(MythrilContext* ctx, Parser* p, const char* msg, const char* help) {
+    SourceLocation location = source_location_from_token(
+        p -> path,
+        ctx -> buffer_start,
+        parser_peek_previous(p)
+    );
 
-    while (
-        kind != TOK_IDENTIFIER  &&
-        kind != TOK_COLON_COLON &&
-        kind != TOK_SEMI_COLON  &&
-        kind != TOK_EOF         &&
-        kind != TOK_EOP
-    ) {
-        parser_advance(p);
-
-        kind = parser_peek(p) -> kind;
-    }
+    diag_error_help(ctx -> diag_ctx, location, msg, help);
 }
 
-void recover_in_fn_decl(Parser* p) {
-    TokenKind kind = parser_peek(p) -> kind;
+void error_at_previous_end(MythrilContext* ctx, Parser* p, const char* msg, const char* help) {
+    Token* token = parser_peek_previous(p);
 
-    while (
-        kind != TOK_IDENTIFIER  &&
-        kind != TOK_COLON_COLON &&
-        kind != TOK_SEMI_COLON  &&
-        kind != TOK_EOF         &&
-        kind != TOK_EOP
-    ) {
-        parser_advance(p);
+    token -> lexeme += token -> length;
+    token -> length = 1;
 
-        kind = parser_peek(p) -> kind;
+    SourceLocation location = source_location_from_token(
+        p -> path,
+        ctx -> buffer_start,
+        token
+    );
+
+    diag_error_help(ctx -> diag_ctx, location, msg, help);
+}
+
+void error_till_end_of_line(MythrilContext* ctx, Parser* p, const char* msg, const char* help) {
+    Token* line = parser_peek(p);
+
+    const char* cursor = line -> lexeme;
+
+    while (*cursor != '\n') {
+        cursor++;
     }
+
+    line -> length = cursor - line -> lexeme;
+
+    SourceLocation location = source_location_from_token(
+        p -> path,
+        ctx -> buffer_start,
+        line
+    );
+
+    diag_error_help(ctx -> diag_ctx, location, msg, help);
 }

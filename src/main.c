@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -13,7 +14,7 @@
 #include "files/types.h"
 #include "lexer/lexer.h"
 #include "mythril/types.h"
-#include "tokens/types.h"
+#include "tokens/tokens.h"
 #include "utils/types.h"
 
 static ArenaAllocator arena = {0};

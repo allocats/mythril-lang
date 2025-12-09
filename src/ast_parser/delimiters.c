@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-void delimiters_push(Parser* p, Token* token, const char* src_ctx) {
+void delimiters_push(Parser* p, Token* token, const char* src_ctx, const usize length) {
     DelimiterStack* stack = &p -> delimiters;
 
     if (stack -> top >= DELIMITER_STACK_MAX) {
@@ -14,7 +14,8 @@ void delimiters_push(Parser* p, Token* token, const char* src_ctx) {
 
     stack -> items[stack -> top++] = (Delimiter) {
         .token = token,
-        .context = src_ctx
+        .context = src_ctx,
+        .length = length
     };
 }
 

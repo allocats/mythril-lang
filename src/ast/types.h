@@ -55,6 +55,7 @@ static const char* AST_KIND_STRINGS[] = {
 };
 
 #define X_TYPES(X)  \
+    X(TYPE_ERR)     \
     X(TYPE_BASIC)   \
     X(TYPE_POINTER) \
     X(TYPE_ARRAY)

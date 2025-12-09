@@ -3,7 +3,6 @@
 #include "../ast_parser/parser.h"
 #include "../diagnostics/diagnostics.h"
 #include "../hash/hash.h"
-#include "../utils/vec.h"
 #include "types.h"
 
 static void extend_declarations(ArenaAllocator* arena, Program* prog);
@@ -24,63 +23,56 @@ void parse(MythrilContext* ctx, char** paths, FileBuffer* buffers, usize file_co
         .index = 0,
         .count = count,
         .path = *paths++,
-        .delimiters = {
-            .items = arena_alloc(
-                ctx -> arena,
-                sizeof(TokenKind) * DELIMITER_STACK_INIT_CAPACITY
-            ),
-            .locations = arena_alloc(
-                ctx -> arena,
-                sizeof(SourceLocation) * DELIMITER_STACK_INIT_CAPACITY
-            ),
-            .contexts = arena_alloc(
-                ctx -> arena,
-                sizeof(const char*) * DELIMITER_STACK_INIT_CAPACITY
-            ),
-            .capacity = DELIMITER_STACK_INIT_CAPACITY,
-            .top = 0
-        }
+        .delimiters = {0}
     };
 
     u32 buffer_idx = 1;
 
     while (parser.index < parser.count) {
-        Token token = *parser_peek(&parser);
+        Token* token = parser_peek(&parser);
 
         AstNode* node = nullptr;
         
         extend_declarations(ctx -> arena, program);
 
-        switch (token.kind) {
+        switch (token -> kind) {
             case TOK_MODULE: {
+                parser_advance(&parser);
                 node = parse_module_decl(ctx, &parser);
             } break;
 
             case TOK_IMPORT: {
+                parser_advance(&parser);
                 node = parse_import_decl(ctx, &parser);
             } break;
 
             case TOK_ENUM: {
+                parser_advance(&parser);
                 node = parse_enum_decl(ctx, &parser);
             } break;
 
             case TOK_STRUCT: {
+                parser_advance(&parser);
                 node = parse_struct_decl(ctx, &parser);
             } break;
 
             case TOK_IMPL: {
+                parser_advance(&parser);
                 node = parse_impl_decl(ctx, &parser);
             } break;
 
             case TOK_FUNCTION: {
+                parser_advance(&parser);
                 node = parse_function_decl(ctx, &parser);
             } break;
 
             case TOK_CONST: {
+                parser_advance(&parser);
                 node = parse_const_decl(ctx, &parser);
             } break;
 
             case TOK_STATIC: {
+                parser_advance(&parser);
                 node = parse_static_decl(ctx, &parser);
             } break;
 
@@ -105,16 +97,18 @@ void parse(MythrilContext* ctx, char** paths, FileBuffer* buffers, usize file_co
                 SourceLocation location = source_location_from_token(
                     parser.path,
                     ctx -> buffer_start,
-                    &token
+                    token
                 );
 
                 diag_error(
                     ctx -> diag_ctx,
                     location,
                     "unexpected top level declaration '%.*s'",
-                    token.length,
-                    token.lexeme
+                    token -> length,
+                    token -> lexeme
                 ); 
+
+                recover_to_top_level_decl(&parser);
             } break;
         }
 
@@ -124,7 +118,7 @@ void parse(MythrilContext* ctx, char** paths, FileBuffer* buffers, usize file_co
     }
 }
 
-AstSlice* ast_make_slice_from_token(ArenaAllocator* arena, Token* token) {
+AstSlice* make_slice_from_token(ArenaAllocator* arena, Token* token) {
     AstSlice* slice = arena_alloc(arena, sizeof(*slice));
 
     slice -> ptr  = token -> lexeme; 

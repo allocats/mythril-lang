@@ -1,8 +1,0 @@
-#pragma once
-#ifndef BUILTIN_FUNCTIONS_H
-#define BUILTIN_FUNCTIONS_H
-
-#define MAIN_HASH    0xa15180acea90e208
-#define SYSCALL_HASH 0xf9a3110f1d2c19a
-
-#endif // !BUILTIN_FUNCTIONS_H
