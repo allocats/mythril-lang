@@ -8,22 +8,7 @@
 #include "../tokens/types.h"
 #include "../utils/types.h"
 
-#define DELIMITER_STACK_MAX 128
-
-typedef struct {
-    // might store index + length as u32's in order to save 8 bytes per struct
-    Token* token;
-
-    /* function name, struct name, etc. might remove this */
-    const char* context;
-    usize length;
-} Delimiter;
-
-typedef struct {
-    i32 top;
-    u8 _padding[4];
-    Delimiter items[DELIMITER_STACK_MAX];
-} DelimiterStack;
+#include "delimiters/types.h"
 
 typedef struct {
     ArenaAllocator* arena;

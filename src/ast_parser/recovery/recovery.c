@@ -1,4 +1,4 @@
-#include "parser.h"
+#include "recovery.h"
 
 void recover_to_top_level_decl(Parser* p) {
     TokenKind kind = parser_peek(p) -> kind;

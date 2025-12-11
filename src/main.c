@@ -94,7 +94,7 @@ i32 main(i32 argc, char* argv[]) {
 
     Tokens tokens = {
         .items = arena_alloc(&arena, sizeof(Token) * 64),
-        .capacity = 64,
+        .capacity = 128,
         .count = 0
     };
 

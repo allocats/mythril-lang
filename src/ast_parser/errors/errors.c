@@ -1,6 +1,6 @@
-#include "parser.h"
+#include "errors.h"
 
-#include "../diagnostics/diagnostics.h"
+#include "../../diagnostics/diagnostics.h"
 
 void error_at_current(MythrilContext* ctx, Parser* p, const char* msg, const char* help) {
     SourceLocation location = source_location_from_token(
