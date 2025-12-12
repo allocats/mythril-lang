@@ -7,5 +7,6 @@
 void recover_to_top_level_decl(Parser* p);
 void recover_in_path_segment(Parser* p);
 void recover_in_fn_params(Parser* p);
+void recover_in_fn_body(Parser* p);
 
 #endif // !MYTHRIL_AST_PARSER_RECOVERY_H

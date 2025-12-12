@@ -218,7 +218,6 @@ static void print_node(AstNode* node, int indent) {
                 printf(" = ");
                 print_node(node->var_decl.value, 0);
                 printf("\n");
-                print_node(node->var_decl.value, indent + 1);
             } else {
                 printf("\n");
             }

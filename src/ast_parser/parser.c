@@ -1,6 +1,7 @@
 #include "defaults.h"
 #include "parser.h"
 #include "errors/errors.h"
+#include "recovery/recovery.h"
 #include "types.h"
 
 #include "precedence/precedence.h"
@@ -12,6 +13,12 @@
 
 AstNode* top_level_decl_fail(Parser* p, AstNode* node) {
     recover_to_top_level_decl(p);
+    node -> kind = AST_ERROR;
+    return node;
+}
+
+AstNode* statement_fail(Parser* p, AstNode* node) {
+    recover_in_fn_body(p);
     node -> kind = AST_ERROR;
     return node;
 }
@@ -543,13 +550,87 @@ AstNode* parse_static_decl(MythrilContext* ctx, Parser* p) {
 AstNode* parse_var_decl(MythrilContext* ctx, Parser *p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
+    node -> kind = AST_VAR_DECL;
+
+    node -> var_decl.value = nullptr;
+
+    Token* name = parser_peek(p);
+
+    if (name -> kind != TOK_IDENTIFIER) {
+        error_at_current(
+            ctx,
+            p,
+            "expected variable name",
+            "add a valid name here" 
+        );
+
+        return statement_fail(p, node);
+    }
+
+    node -> var_decl.identifier = *make_slice_from_token(p -> arena, name);
+
+    parser_advance(p);
+
+    if (!parser_check_current(p, TOK_COLON)) {
+        error_at_previous_end(
+            ctx,
+            p,
+            "expected ':'",
+            "add ':' here between name and type"
+        );
+
+        return statement_fail(p, node);
+    }
+
+    parser_advance(p);
+
+    AstType* type = parse_type(ctx, p);
+
+    if (!type || type -> kind == TYPE_ERR) {
+        error_whole_line(
+            ctx,
+            p,
+            "invalid type",
+            "fix variable type"
+        );
+
+        return statement_fail(p, node);
+    }
+
+    node -> var_decl.type = type;
+
+    Token* next = parser_advance(p);
+
+    switch (next -> kind) {
+        case TOK_SEMI_COLON: {
+            return node;
+        } break;
+
+        case TOK_EQUALS: {
+            node -> var_decl.value = parse_expression(ctx, p);
+        } break;
+
+        default: {
+            error_at_current(
+                ctx,
+                p,
+                "unexpected token",
+                "expected ';' or '='"
+            );
+
+            return statement_fail(p, node);
+        } break;
+    }
+
     return node;
 }
 
 AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
-    AstNode* node; // = arena_alloc(p -> arena, sizeof(*node));
+    AstNode* node = nullptr; // = arena_alloc(p -> arena, sizeof(*node));
 
     TokenKind kind = parser_peek(p) -> kind;
+
+    b8 needs_semicolon = true;
 
     switch (kind) {
         case TOK_LET: { 
@@ -557,12 +638,40 @@ AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
             node = parse_var_decl(ctx, p);
         } break;
 
+        case TOK_CONST: {
+            parser_advance(p);
+            node = parse_const_decl(ctx, p);
+        } break;
+
+        case TOK_STATIC: {
+            parser_advance(p);
+            node = parse_static_decl(ctx, p);
+        } break;
+
         case TOK_IDENTIFIER: {
             node = parse_expression(ctx, p);
         } break;
+
+        case TOK_LOOP: {
+            parser_advance(p);
+
+            node = parse_loop_stmt(ctx, p);
+            needs_semicolon = false;
+        } break;
+
+        default: {
+            error_till_end_of_line(
+                ctx,
+                p,
+                "expected statement",
+                "invalid start to statement"
+            );
+
+            return statement_fail(p, node);
+        } break;
     }
 
-    if (!parser_check_current(p, TOK_SEMI_COLON)) {
+    if (needs_semicolon && !parser_check_current(p, TOK_SEMI_COLON)) {
         error_at_previous_end(
             ctx,
             p,
@@ -570,7 +679,7 @@ AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
             "add ';' here"
         );
 
-        return node;
+        return statement_fail(p, node);
     }
 
     parser_advance(p);
@@ -580,6 +689,65 @@ AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
 
 AstNode* parse_loop_stmt(MythrilContext* ctx, Parser* p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+    node -> kind = AST_LOOP_STMT;
+
+    node -> loop_stmt.stmt_count = 0;
+    node -> loop_stmt.stmt_capacity = STMTS_INIT_CAPACITY;
+    node -> loop_stmt.statements = arena_alloc(p -> arena, sizeof(AstNode*) * STMTS_INIT_CAPACITY);
+
+    if (!parser_check_current(p, TOK_LEFT_BRACE)) {
+        error_at_previous_end(
+            ctx,
+            p,
+            "expected '{'",
+            "add a '{' here"
+        );
+    } else {
+        parser_advance(p);
+    }
+
+    if (parser_check_current(p, TOK_RIGHT_BRACE)) {
+        return node;
+    }
+
+    // todo: proper depth tracking but with global parser delimiters i think
+    //       need to figure something out
+
+    i32 depth = 1;
+
+    while (depth > 0) {
+        TokenKind current = parser_peek(p) -> kind;
+
+        if (current == TOK_EOF || current == TOK_EOP) {
+            return statement_fail(p, node);
+        }
+
+        if (current == TOK_LEFT_BRACE) {
+            depth++;
+        } else if (current == TOK_RIGHT_BRACE) {
+            depth--;
+
+            if (depth == 0) {
+                return node;
+            }
+        }
+
+        if (node -> loop_stmt.stmt_count >= node -> loop_stmt.stmt_capacity) {
+            usize size = sizeof(AstNode*) * node -> loop_stmt.stmt_capacity;
+
+            node -> loop_stmt.statements = arena_realloc(
+                p -> arena,
+                node -> loop_stmt.statements,
+                size,
+                size * 2
+            );
+
+            node -> loop_stmt.stmt_capacity *= 2;
+        }
+
+        node -> loop_stmt.statements[node -> loop_stmt.stmt_count++] = parse_statement(ctx, p);
+    }
 
     return node;
 }
@@ -877,12 +1045,21 @@ AstNode* parse_postfix(MythrilContext* ctx, Parser* p, AstNode* node) {
                 }
 
                 if (!parser_check_current(p, TOK_COMMA)) {
-                    error_at_previous_end(
-                        ctx,
-                        p,
-                        "expected ',' between args",
-                        "add a ',' here"
-                    );
+                    if (parser_check_current(p, TOK_SEMI_COLON)) {
+                        error_at_previous_end(
+                            ctx,
+                            p,
+                            "expected ')'",
+                            "add a ')' here"
+                        );
+                    } else {
+                        error_at_previous_end(
+                            ctx,
+                            p,
+                            "expected ',' between args",
+                            "add a ',' here"
+                        );
+                    }
 
                     node -> kind = AST_ERROR;
 
