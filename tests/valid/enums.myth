@@ -1,0 +1,7 @@
+enum Fruit {
+    Apple;
+}
+
+fn main(): void {
+    let x: Fruit = Fruit::Apple;
+}

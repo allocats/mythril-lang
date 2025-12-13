@@ -130,7 +130,7 @@ typedef struct {
 typedef struct {
     AstSlice identifier;
 
-    AstEnumVariant* variants;
+    AstEnumVariant** variants;
     usize capacity;
     usize count;
 } AstEnumDecl;

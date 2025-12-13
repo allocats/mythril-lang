@@ -123,6 +123,57 @@ AstNode* parse_import_decl(MythrilContext* ctx, Parser* p) {
     return node;
 }
 
+AstEnumVariant* parse_enum_variant(MythrilContext* ctx, Parser* p) {
+    AstEnumVariant* variant = arena_alloc(p -> arena, sizeof(*variant));
+
+    variant -> count = 0;
+    variant -> capacity = ENUM_TYPES_INIT_CAPACITY;
+
+    variant -> types = arena_alloc(p -> arena, sizeof(AstType*) * ENUM_TYPES_INIT_CAPACITY);
+
+    Token* name = parser_peek(p);
+
+    if (name -> kind != TOK_IDENTIFIER) {
+        error_at_current(
+            ctx,
+            p,
+            "expected identifier",
+            "add a valid enum variant name"
+        );
+
+        return nullptr;
+    }
+
+    variant -> identifier = *make_slice_from_token(p -> arena, name);
+
+    parser_advance(p);
+
+    TokenKind current = parser_peek(p) -> kind; 
+
+    switch (current) {
+        case TOK_SEMI_COLON: {
+            parser_advance(p);
+            return variant;
+        } break;
+
+        case TOK_LEFT_PAREN: {
+
+        } break;
+
+        default: {
+            error_at_previous_end(
+                ctx,
+                p,
+                "expected ';' or '('",
+                "add ';' here to mark end or '(' to specifiy types"
+            );
+            return nullptr;
+        } break;
+    }
+
+    return variant;
+}
+
 AstNode* parse_enum_decl(MythrilContext* ctx, Parser* p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
 
@@ -171,8 +222,25 @@ AstNode* parse_enum_decl(MythrilContext* ctx, Parser* p) {
     }
 
     while (!parser_check_current(p, TOK_RIGHT_BRACE)) {
+        if (node -> enum_decl.count >= node -> enum_decl.capacity) {
+            usize size = sizeof(AstEnumVariant) * node -> enum_decl.capacity;
 
+            node -> enum_decl.variants = arena_realloc(
+                p -> arena,
+                node -> enum_decl.variants,
+                size,
+                size * 2
+            );
+
+            node -> enum_decl.capacity *= 2;
+        }
+
+        AstEnumVariant* variant = parse_enum_variant(ctx, p);
+
+        node -> enum_decl.variants[node -> enum_decl.count++] = variant;
     }
+
+    parser_advance(p);
 
     return node;
 }
