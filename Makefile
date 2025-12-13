@@ -19,7 +19,7 @@ TIDY_CHECKS = -*,\
 			  clang-analyzer-core.*,\
 			  clang-analyzer-deadcode.*
 
-.PHONY: all check clean debug
+.PHONY: all check clean debug test
 
 all: $(MYTHRIL)
 
@@ -41,6 +41,9 @@ $(BIN_DIR): | $(BUILD_DIR)
 
 check:
 	@clang-tidy $(SRCS) --checks='$(TIDY_CHECKS)' -- $(CFLAGS) -I$(SRC_DIR)
+
+test:
+	@cd tests && bash run_tests.sh
 
 clean:
 	@rm -rvf $(BUILD_DIR) > /dev/null
