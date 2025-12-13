@@ -48,14 +48,14 @@ for file in ./invalid/*.myth; do
     fi
 done
 
-echo -e "\n=== Test Summary ==="
+echo -e "\n=== Test Summary ===\n"
 echo "Passed: $PASSED"
 echo "Failed: $FAILED"
 
 if [ $FAILED -eq 0 ]; then
-    echo -e "${GREEN}All tests passed!${NC}"
+    echo -e "\n${GREEN}All tests passed!${NC}"
     exit 0
 else
-    echo -e "${RED}Some tests failed!${NC}"
+    echo -e "\n${RED}Some tests failed!${NC}"
     exit 1
 fi

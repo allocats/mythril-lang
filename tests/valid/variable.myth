@@ -1,0 +1,5 @@
+import std::io;
+
+fn main(): void {
+    let x: i32 = 1;
+}
