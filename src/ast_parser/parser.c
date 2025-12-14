@@ -772,6 +772,8 @@ AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
         } break;
 
         default: {
+            node = arena_alloc(p -> arena, sizeof(*node));
+
             error_till_end_of_line(
                 ctx,
                 p,
@@ -968,9 +970,12 @@ AstType* parse_type(MythrilContext* ctx, Parser* p) {
 AstNode* parse_expression(MythrilContext* ctx, Parser* p) {
     AstNode* node = parse_expr_prec(ctx, p, 0);
     
-    if (!node || node == nullptr || node -> kind == AST_ERROR) {
+    if (!node) {
+        node = arena_alloc(p -> arena, sizeof(*node));
         node -> kind = AST_ERROR;
+    }
 
+    if (node -> kind == AST_ERROR) {
         // todo: recover, perhaps pass in a pointer to a specific recovery function
     }
 
