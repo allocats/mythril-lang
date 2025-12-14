@@ -2,8 +2,6 @@
 
 #include "../../diagnostics/diagnostics.h"
 
-#include <ctype.h>
-
 void error_at_current(MythrilContext* ctx, Parser* p, const char* msg, const char* help) {
     SourceLocation location = source_location_from_token(
         p -> path,
@@ -27,6 +25,9 @@ void error_at_previous(MythrilContext* ctx, Parser* p, const char* msg, const ch
 void error_at_previous_end(MythrilContext* ctx, Parser* p, const char* msg, const char* help) {
     Token* token = parser_peek_previous(p);
 
+    const char* ptr_copy = token -> lexeme;
+    const u32 len_copy = token -> length;
+
     token -> lexeme += token -> length;
     token -> length = 1;
 
@@ -37,6 +38,9 @@ void error_at_previous_end(MythrilContext* ctx, Parser* p, const char* msg, cons
     );
 
     diag_error_help(ctx -> diag_ctx, location, msg, help);
+
+    token -> lexeme = ptr_copy;
+    token -> length = len_copy;
 }
 
 void error_till_end_of_line(MythrilContext* ctx, Parser* p, const char* msg, const char* help) {

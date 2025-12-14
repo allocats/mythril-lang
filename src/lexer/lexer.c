@@ -210,6 +210,11 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
         } break;
 
         case 'u': {
+            if (word_match("union", len, start)) {
+                token -> kind = TOK_UNION;
+                break;
+            }
+
             if (word_match("uninit", len, start)) {
                 token -> kind = TOK_UNINIT;
                 break;
@@ -463,7 +468,7 @@ char* parse_string_literal(MythrilContext* ctx, char* cursor) {
     const char* start = cursor;
     cursor++;
 
-    while (*cursor != '\0' && *cursor != '\n' && *cursor != '\"') {
+    while (*cursor != '\0' && *cursor != '\"') {
         if (*cursor == '\\' && *(cursor + 1) != '\0') {
             cursor += 2;
         } else {

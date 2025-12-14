@@ -137,12 +137,10 @@ static void print_node(AstNode* node, int indent) {
             for (usize i = 0; i < node->enum_decl.count; i++) {
                 print_indent(indent + 1);
                 print_slice(node->enum_decl.variants[i]->identifier);
-                if (node->enum_decl.variants[i]->count > 0) {
-                    printf("(");
-                    for (usize j = 0; j < node->enum_decl.variants[i]->count; j++) {
-                        print_type(node->enum_decl.variants[i]->types[j]);
-                        if (j < node->enum_decl.variants[i]->count - 1) printf(", ");
-                    }
+                if (node->enum_decl.variants[i]->value) {
+                    printf(" = (\n");
+                    print_node(node->enum_decl.variants[i]->value, indent+2);
+                    print_indent(indent + 1);
                     printf(")");
                 }
                 printf("\n");

@@ -5,7 +5,10 @@
 #define ARGS_INIT_CAPACITY          4
 #define PARAM_INIT_CAPACITY         4
 
-#define ENUM_TYPES_INIT_CAPACITY    4
+#define ENUM_INIT_CAP               8
+
+#define UNION_INIT_CAP              8
+#define UNION_TYPES_INIT_CAPACITY   4
 
 #define STMTS_INIT_CAPACITY         8
 

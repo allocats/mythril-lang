@@ -125,14 +125,11 @@ AstNode* parse_import_decl(MythrilContext* ctx, Parser* p) {
 
 AstEnumVariant* parse_enum_variant(MythrilContext* ctx, Parser* p) {
     AstEnumVariant* variant = arena_alloc(p -> arena, sizeof(*variant));
-
-    variant -> count = 0;
-    variant -> capacity = ENUM_TYPES_INIT_CAPACITY;
-
-    variant -> types = arena_alloc(p -> arena, sizeof(AstType*) * ENUM_TYPES_INIT_CAPACITY);
+    
+    variant -> value = nullptr;
 
     Token* name = parser_peek(p);
-
+    
     if (name -> kind != TOK_IDENTIFIER) {
         error_at_current(
             ctx,
@@ -156,19 +153,32 @@ AstEnumVariant* parse_enum_variant(MythrilContext* ctx, Parser* p) {
             return variant;
         } break;
 
-        case TOK_LEFT_PAREN: {
-
+        case TOK_EQUALS: {
+            parser_advance(p);
         } break;
 
         default: {
             error_at_previous_end(
                 ctx,
                 p,
-                "expected ';' or '('",
-                "add ';' here to mark end or '(' to specifiy types"
+                "expected ';' or '='",
+                "add ';' here to mark end or '=' to specifiy value"
             );
             return nullptr;
         } break;
+    }
+
+    variant -> value = parse_expression(ctx, p); 
+
+    if (!parser_check_current(p, TOK_SEMI_COLON)) {
+        error_at_previous_end(
+            ctx, 
+            p, 
+            "expected ';'", 
+            "add a ';' here"
+        );
+    } else {
+        parser_advance(p);
     }
 
     return variant;
@@ -185,6 +195,12 @@ AstNode* parse_enum_decl(MythrilContext* ctx, Parser* p) {
         sizeof(AstEnumVariant) * ENUM_INIT_CAP
     );
 
+    node -> enum_decl.type = (AstSlice) {
+        .ptr = nullptr,
+        .len = 0,
+        .hash = 0
+    };
+
     Token* name = parser_peek(p); 
 
     if (name -> kind != TOK_IDENTIFIER) {
@@ -198,7 +214,31 @@ AstNode* parse_enum_decl(MythrilContext* ctx, Parser* p) {
         return top_level_decl_fail(p, node);
     }
 
+    node -> enum_decl.identifier = *make_slice_from_token(p -> arena, name);
+
     parser_advance(p);
+
+    if (parser_check_current(p, TOK_COLON)) {
+        parser_advance(p);
+
+        Token* type = parser_peek(p);
+
+        if (type -> kind != TOK_IDENTIFIER) {
+            error_at_current(
+                ctx,
+                p,
+                "expected unsigned integer type",
+                "add a valid type 'u8' for example"
+            );
+
+            if (type -> kind != TOK_LEFT_BRACE) {
+                parser_advance(p);
+            }
+        } else {
+            node -> enum_decl.type = *make_slice_from_token(p -> arena, type);
+            parser_advance(p);
+        }
+    }
 
     if (!parser_check_current(p, TOK_LEFT_BRACE)) {
         error_at_previous_end(
@@ -223,7 +263,7 @@ AstNode* parse_enum_decl(MythrilContext* ctx, Parser* p) {
 
     while (!parser_check_current(p, TOK_RIGHT_BRACE)) {
         if (node -> enum_decl.count >= node -> enum_decl.capacity) {
-            usize size = sizeof(AstEnumVariant) * node -> enum_decl.capacity;
+            usize size = sizeof(AstEnumVariant*) * node -> enum_decl.capacity;
 
             node -> enum_decl.variants = arena_realloc(
                 p -> arena,
@@ -237,7 +277,11 @@ AstNode* parse_enum_decl(MythrilContext* ctx, Parser* p) {
 
         AstEnumVariant* variant = parse_enum_variant(ctx, p);
 
-        node -> enum_decl.variants[node -> enum_decl.count++] = variant;
+        if (!variant) {
+            // todo: recover in enum
+        } else {
+            node -> enum_decl.variants[node -> enum_decl.count++] = variant;
+        }
     }
 
     parser_advance(p);
@@ -259,7 +303,7 @@ AstNode* parse_impl_decl(MythrilContext* ctx, Parser* p) {
 
 /*
 
-    TODO: Error recovery and handling, block parsing
+    TODO: Error recovery and handling
 
 */
 

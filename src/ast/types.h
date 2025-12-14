@@ -10,6 +10,7 @@
     X(AST_MODULE_DECL)      \
     X(AST_IMPORT_DECL)      \
     X(AST_STRUCT_DECL)      \
+    X(AST_UNION_DECL)       \
     X(AST_ENUM_DECL)        \
     X(AST_IMPL_DECL)        \
     X(AST_FUNCTION_DECL)    \
@@ -121,19 +122,30 @@ typedef struct {
 
 typedef struct {
     AstSlice identifier;
-
-    AstType** types;
-    usize capacity;
-    usize count;
+    AstNode* value;
 } AstEnumVariant;
 
 typedef struct {
     AstSlice identifier;
+    AstSlice type;
 
     AstEnumVariant** variants;
     usize capacity;
     usize count;
 } AstEnumDecl;
+
+typedef struct {
+    AstSlice identifier;
+    AstType* type;
+} AstUnionVariant;
+
+typedef struct {
+    AstSlice identifier;
+
+    AstUnionVariant** variants;
+    usize capacity;
+    usize count;
+} AstUnionDecl;
 
 typedef struct {
     AstSlice target;
@@ -330,6 +342,7 @@ typedef struct AstNode {
         AstModuleDecl       module_decl;
         AstImportDecl       import_decl;
         AstStructDecl       struct_decl;
+        AstUnionDecl        union_decl;
         AstEnumDecl         enum_decl;
         AstImplDecl         impl_decl;
         AstFunctionDecl     function_decl;
