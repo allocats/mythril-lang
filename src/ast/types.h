@@ -81,6 +81,7 @@ typedef struct AstType AstType;
 
 typedef struct AstType {
     TypeKind kind;
+    bool is_const;
     
     union {
         // basic
@@ -115,7 +116,7 @@ typedef struct {
 typedef struct {
     AstSlice identifier;
 
-    AstStructField* fields;
+    AstStructField** fields;
     usize capacity;
     usize count;
 } AstStructDecl;

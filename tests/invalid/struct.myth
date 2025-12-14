@@ -1,0 +1,21 @@
+struct {
+    x: i32;
+    y: i32;
+}
+
+struct Point {
+    x: ;
+    y: i32;
+}
+
+struct Point2 {
+    : i32;
+    y: i32;
+}
+
+struct Point3 {
+    x: i32
+    y: i32;
+}
+
+fn main(): void {}

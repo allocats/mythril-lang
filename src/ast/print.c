@@ -23,6 +23,10 @@ static void print_type(AstType* type) {
         printf("<no-type>");
         return;
     }
+
+    if (type -> is_const) {
+        printf("CONST ");
+    }
     
     switch (type->kind) {
         case TYPE_BASIC:
@@ -120,9 +124,9 @@ static void print_node(AstNode* node, int indent) {
             printf(" {\n");
             for (usize i = 0; i < node->struct_decl.count; i++) {
                 print_indent(indent + 1);
-                print_slice(node->struct_decl.fields[i].identifier);
+                print_slice(node->struct_decl.fields[i]->identifier);
                 printf(": ");
-                print_type(node->struct_decl.fields[i].type);
+                print_type(node->struct_decl.fields[i]->type);
                 printf("\n");
             }
             print_indent(indent);
