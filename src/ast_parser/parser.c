@@ -771,6 +771,13 @@ AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
             needs_semicolon = false;
         } break;
 
+        case TOK_WHILE: {
+            parser_advance(p);
+
+            node = parse_while_stmt(ctx, p);
+            needs_semicolon = false;
+        } break;
+
         default: {
             node = arena_alloc(p -> arena, sizeof(*node));
 
@@ -868,6 +875,66 @@ AstNode* parse_loop_stmt(MythrilContext* ctx, Parser* p) {
 
 AstNode* parse_while_stmt(MythrilContext* ctx, Parser* p) {
     AstNode* node = arena_alloc(p -> arena, sizeof(*node));
+
+    node -> kind = AST_WHILE_STMT;
+
+    node -> while_stmt.stmt_count = 0;
+    node -> while_stmt.stmt_capacity = STMTS_INIT_CAPACITY;
+    node -> while_stmt.statements = arena_alloc(p -> arena, sizeof(AstNode*) * STMTS_INIT_CAPACITY);
+    node -> while_stmt.cond = parse_expression(ctx, p);
+
+    if (!parser_check_current(p, TOK_LEFT_BRACE)) {
+        error_at_previous_end(
+            ctx,
+            p,
+            "expected '{'",
+            "add a '{' here"
+        );
+    } else {
+        parser_advance(p);
+    }
+
+    if (parser_check_current(p, TOK_RIGHT_BRACE)) {
+        return node;
+    }
+
+    // todo: proper depth tracking but with global parser delimiters i think
+    //       need to figure something out
+
+    i32 depth = 1;
+
+    while (depth > 0) {
+        TokenKind current = parser_peek(p) -> kind;
+
+        if (current == TOK_EOF || current == TOK_EOP) {
+            return statement_fail(p, node);
+        }
+
+        if (current == TOK_LEFT_BRACE) {
+            depth++;
+        } else if (current == TOK_RIGHT_BRACE) {
+            depth--;
+
+            if (depth == 0) {
+                return node;
+            }
+        }
+
+        if (node -> while_stmt.stmt_count >= node -> while_stmt.stmt_capacity) {
+            usize size = sizeof(AstNode*) * node -> while_stmt.stmt_capacity;
+
+            node -> while_stmt.statements = arena_realloc(
+                p -> arena,
+                node -> while_stmt.statements,
+                size,
+                size * 2
+            );
+
+            node -> while_stmt.stmt_capacity *= 2;
+        }
+
+        node -> while_stmt.statements[node -> while_stmt.stmt_count++] = parse_statement(ctx, p);
+    }
 
     return node;
 }

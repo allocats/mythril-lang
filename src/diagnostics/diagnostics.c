@@ -197,6 +197,22 @@ const char* level_strings(DiagnosticLevel level) {
     }
 }
 
+const char* get_line_col_indent(usize line) {
+    if (line < 10) {
+        return " ";
+    } else if (line < 100) {
+        return "  ";
+    } else if (line < 1000) {
+        return "   ";
+    } else if (line < 10000) {
+        return "    ";
+    } else if (line < 100000) {
+        return "     ";
+    } else if (line < 1000000) {
+        return "      ";
+    }
+}
+
 void diagnostics_print(DiagContext* ctx, Diagnostic* diag) {
     b8 colour_support = ctx -> stderr_supports_colours;
 
@@ -237,12 +253,14 @@ void diagnostics_print(DiagContext* ctx, Diagnostic* diag) {
     usize line_len;
 
     get_source_line(diag -> location.source_buffer, diag -> location.pointer, &line_start, &line_len);
+    usize line = diag -> location.line;
+    char* indent = get_line_col_indent(line);
     
     // source context
-    fprintf(stderr, "  %s|%s\n", bold, reset);
-    fprintf(stderr, "%zu %s|%s ", diag -> location.line, bold, reset);
+    fprintf(stderr, "%s %s|%s\n", indent, bold, reset);
+    fprintf(stderr, "%zu %s|%s ", line, bold, reset);
     fprintf(stderr, "%.*s\n", (i32) line_len, line_start);
-    fprintf(stderr, "  %s|%s ", bold, reset);
+    fprintf(stderr, "%s %s|%s ", indent, bold, reset);
     
     usize spaces = diag -> location.column - 1;
 
@@ -265,7 +283,7 @@ void diagnostics_print(DiagContext* ctx, Diagnostic* diag) {
     }
     
     fprintf(stderr, "\n");
-    fprintf(stderr, "  %s|%s\n", bold, reset);
+    fprintf(stderr, "%s %s|%s\n", indent, bold, reset);
 }
 
 void diagnostics_print_all(DiagContext* ctx) {
