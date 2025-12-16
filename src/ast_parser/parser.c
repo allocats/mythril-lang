@@ -952,7 +952,7 @@ AstNode* parse_var_decl(MythrilContext* ctx, Parser *p) {
 }
 
 AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
-    AstNode* node = nullptr; // = arena_alloc(p -> arena, sizeof(*node));
+    AstNode* node = nullptr;
 
     TokenKind kind = parser_peek(p) -> kind;
 

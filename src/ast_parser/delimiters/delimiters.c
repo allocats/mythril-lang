@@ -7,14 +7,14 @@ void delimiters_push(Parser* p, Token* token, const char* src_ctx, const usize l
 
     if (stack -> top >= DELIMITER_STACK_MAX) {
         // todo: error
-        fprintf(stderr, "wth is going on");
+        fprintf(stderr, "what the helli is going on, why are you so nested");
         exit(1);
     }
 
     stack -> items[stack -> top++] = (Delimiter) {
         .token = token,
-        .context = src_ctx,
-        .length = length
+        .context_ptr = src_ctx,
+        .context_length = length
     };
 }
 

@@ -1,0 +1,13 @@
+struct Token {
+    lexeme: char*;
+    length: usize;
+}
+
+impl Token {
+    fn print(self): void {
+        println("%.*s", self.length, self.lexeme);
+    }
+}
+
+fn main(): void {
+}

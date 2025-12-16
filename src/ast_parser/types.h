@@ -23,8 +23,8 @@ typedef struct {
     // impl "Foo"; fn "foo" store the identifier of current contexts
     // for better error handling, can now say:
     // "error at function foo in implementation of Foo"
-    const char* current_fn;
-    const char* current_struct;
+    // const char* current_fn;
+    // const char* current_impl;
 
     DelimiterStack delimiters;
 } Parser;

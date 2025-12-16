@@ -8,12 +8,12 @@
 #define DELIMITER_STACK_MAX 128
 
 typedef struct {
-    // might store index + length as u32's in order to save 8 bytes per struct
+    // token -> kind for the token kind (brace, paren, square)
     Token* token;
 
     /* function name, struct name, etc. might remove this */
-    const char* context;
-    usize length;
+    const char* context_ptr;
+    usize context_length;
 } Delimiter;
 
 typedef struct {
