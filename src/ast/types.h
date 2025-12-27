@@ -81,7 +81,8 @@ typedef struct AstType AstType;
 
 typedef struct AstType {
     TypeKind kind;
-    bool is_const;
+    bool is_mutable;
+    bool is_ref;
     
     union {
         // basic
@@ -189,6 +190,8 @@ typedef struct {
     AstType* type;
 
     AstNode* value;
+
+    bool is_mutable;
 } AstVarDecl;
 
 typedef struct {

@@ -6,7 +6,7 @@
 *
 *   File structure: 
 *       1. Primitive types
-*       2. X-Macro helper
+*       2. X-Macro helper for enums
 * 
 */
 
@@ -47,7 +47,7 @@ typedef ssize_t     ssize;
 
 /*
 *
-*   1. Primitive type aliases
+*   2. X-Macro helper for enums
 *
 */
 

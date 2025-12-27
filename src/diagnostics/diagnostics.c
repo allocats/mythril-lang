@@ -211,6 +211,8 @@ const char* get_line_col_indent(usize line) {
     } else if (line < 1000000) {
         return "      ";
     }
+
+    return "";
 }
 
 void diagnostics_print(DiagContext* ctx, Diagnostic* diag) {
@@ -254,7 +256,7 @@ void diagnostics_print(DiagContext* ctx, Diagnostic* diag) {
 
     get_source_line(diag -> location.source_buffer, diag -> location.pointer, &line_start, &line_len);
     usize line = diag -> location.line;
-    char* indent = get_line_col_indent(line);
+    const char* indent = get_line_col_indent(line);
     
     // source context
     fprintf(stderr, "%s %s|%s\n", indent, bold, reset);

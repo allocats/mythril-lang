@@ -150,6 +150,11 @@ char* parse_word(MythrilContext* ctx, char* cursor) {
         } break;
 
         case 'm': {
+            if (word_match("mut", len, start)) {
+                token -> kind = TOK_MUT;
+                break;
+            }
+
             if (word_match("match", len, start)) {
                 token -> kind = TOK_MATCH;
                 break;

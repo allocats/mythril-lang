@@ -24,8 +24,12 @@ static void print_type(AstType* type) {
         return;
     }
 
-    if (type -> is_const) {
-        printf("CONST ");
+    if (type -> is_mutable) {
+        printf("MUTABLE ");
+    }
+
+    if (type -> is_ref) {
+        printf("REF ");
     }
     
     switch (type->kind) {
@@ -213,6 +217,9 @@ static void print_node(AstNode* node, int indent) {
         
         case AST_VAR_DECL: {
             printf("VAR ");
+            if (node->var_decl.is_mutable) {
+                printf("mutable ");
+            }
             print_slice(node->var_decl.identifier);
             printf(": ");
             print_type(node->var_decl.type);

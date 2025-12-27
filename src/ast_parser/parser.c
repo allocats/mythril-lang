@@ -773,18 +773,18 @@ AstNode* parse_const_decl(MythrilContext* ctx, Parser* p) {
         return top_level_decl_fail(p, node);
     }
 
-    if (!parser_check_current(p, TOK_SEMI_COLON)) {
-        error_at_previous_end(
-            ctx,
-            p,
-            "expected ';'",
-            "add ';' after constant declaration"
-        );
-
-        return top_level_decl_fail(p, node);
-    }
-
-    parser_advance(p);
+    // if (!parser_check_current(p, TOK_SEMI_COLON)) {
+    //     error_at_previous_end(
+    //         ctx,
+    //         p,
+    //         "expected ';'",
+    //         "add ';' after constant declaration"
+    //     );
+    //
+    //     return top_level_decl_fail(p, node);
+    // }
+    //
+    // parser_advance(p);
 
     node -> const_decl.identifier = *make_slice_from_token(p -> arena, name);
     node -> const_decl.type = type;
@@ -879,6 +879,12 @@ AstNode* parse_var_decl(MythrilContext* ctx, Parser *p) {
     node -> kind = AST_VAR_DECL;
 
     node -> var_decl.value = nullptr;
+    node -> var_decl.is_mutable = false;
+
+    if (parser_check_current(p, TOK_MUT)) {
+        node -> var_decl.is_mutable = true;
+        parser_advance(p);
+    }
 
     Token* name = parser_peek(p);
 
@@ -997,6 +1003,12 @@ AstNode* parse_statement(MythrilContext* ctx, Parser* p) {
 
             node = parse_for_stmt(ctx, p);
             needs_semicolon = false;
+        } break;
+
+        case TOK_RETURN: {
+            parser_advance(p);
+
+            node = parse_return_stmt(ctx, p);
         } break;
 
         default: {
@@ -1264,8 +1276,16 @@ AstNode* parse_return_stmt(MythrilContext* ctx, Parser* p) {
 AstType* parse_type(MythrilContext* ctx, Parser* p) {
     AstType* base_type = arena_alloc(p -> arena, sizeof(*base_type));
 
-    if (parser_check_current(p, TOK_CONST)) {
-        base_type -> is_const = true;
+    base_type -> is_mutable = false;
+    base_type -> is_ref = false;
+
+    if (parser_check_current(p, TOK_AMPERSAND)) {
+        base_type -> is_ref = true;
+        parser_advance(p);
+    }
+
+    if (parser_check_current(p, TOK_MUT)) {
+        base_type -> is_mutable = true;
         parser_advance(p);
     }
 
