@@ -90,7 +90,10 @@
     X(TOK_CONST)                    \
     X(TOK_STATIC)                   \
                                     \
+    X(TOK_MUT)                      \
+                                    \
     X(TOK_FUNCTION)                 \
+    X(TOK_UNION)                    \
     X(TOK_STRUCT)                   \
     X(TOK_ENUM)                     \
     X(TOK_IMPL)                     \

@@ -42,7 +42,7 @@ statement   = var_decl
             | return_stmt  
             | expr_stmt ;  
   
-var_decl    = "let" IDENTIFIER ":" type [ "=" expression ] ";" ;  
+var_decl    = "let" [ "mut" ] IDENTIFIER ":" type [ "=" expression ] ";" ;  
 const_decl  = "const" IDENTIFIER ":" type "=" expression ";" ;  
   
 lvalue          = { lvalue_prefix } IDENTIFIER { lvalue_postfix } ;

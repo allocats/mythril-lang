@@ -1,0 +1,5 @@
+#pragma once
+#ifndef MYTHRIL_SEMANTICS_TYPES_H
+#define MYTHRIL_SEMANTICS_TYPES_H
+
+#endif // !MYTHRIL_SEMANTICS_TYPES_H

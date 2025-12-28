@@ -8,7 +8,7 @@
 #define push_vec(v, item, arena)                                                    \
     do {                                                                            \
         if ((v) -> count >= (v) -> capacity) {                                      \
-            usize size = (v) -> count * sizeof(item);                               \
+            usize size = (v) -> capacity * sizeof(item);                               \
             (v) -> items = arena_realloc(arena, (v) -> items, size, size * 2);      \
             (v) -> capacity *= 2;                                                   \
         }                                                                           \
@@ -18,7 +18,7 @@
 #define extend_vec(v, arena)                                                        \
     do {                                                                            \
         if ((v) -> count >= (v) -> capacity) {                                      \
-            usize size = (v) -> count * sizeof(*(v) -> items);                      \
+            usize size = (v) -> capacity * sizeof((v) -> items[0]);                      \
             (v) -> items = arena_realloc(arena, (v) -> items, size, size * 2);      \
             (v) -> capacity *= 2;                                                   \
         }                                                                           \

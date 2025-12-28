@@ -1,407 +1,469 @@
 #include <stdio.h>
 
+#include "ast.h"
 #include "types.h"
 
-void print_ast_node(AstNode* node, int indent);
+static void print_node(AstNode* node, int indent);
+static void print_type(AstType* type);
+static void print_slice(AstSlice slice);
+static void print_indent(int level);
 
-static void print_indent(int indent) {
-    for (int i = 0; i < indent; i++) printf("    ");
+static void print_indent(int level) {
+    for (int i = 0; i < level; i++) {
+        printf("  ");
+    }
 }
 
-static void print_slice(AstSlice s) {
-    printf("%.*s", (int)s.len, s.ptr);
+static void print_slice(AstSlice slice) {
+    printf("%.*s", (int)slice.len, slice.ptr);
 }
 
-static void print_type(AstType* t, int indent);
-
-static void print_type(AstType* t, int indent) {
-    if (!t) {
-        printf("<null type>");
+static void print_type(AstType* type) {
+    if (!type) {
+        printf("<no-type>");
         return;
     }
 
-    switch (t->kind) {
+    if (type -> is_mutable) {
+        printf("MUTABLE ");
+    }
+
+    if (type -> is_ref) {
+        printf("REF ");
+    }
+    
+    switch (type->kind) {
         case TYPE_BASIC:
-            print_slice(t->identifier);
+            print_slice(type->identifier);
             break;
-
         case TYPE_POINTER:
+            print_type(type->pointee);
             printf("*");
-            print_type(t->pointee, indent);
             break;
-
         case TYPE_ARRAY:
+            print_type(type->array.element_type);
             printf("[");
-            if (t->array.size_expr) {
-                // simplistic
-                printf("size_expr");
+            if (type->array.size_expr) {
+                print_node(type->array.size_expr, 0);
             }
-            printf("] ");
-            print_type(t->array.element_type, indent);
+            printf("]");
             break;
-
-        default:
-            printf("<unknown type>");
+        case TYPE_ERR:
+            printf("<error-type>");
+            break;
     }
 }
 
-static void print_ast_vec(AstVec* v, int indent) {
-    for (usize i = 0; i < v->count; i++) {
-        AstNode* n = v->items[i];
-        print_ast_node(n, indent);
+static void print_path(AstSlice* segments, usize count) {
+    for (usize i = 0; i < count; i++) {
+        print_slice(segments[i]);
+        if (i < count - 1) printf("::");
     }
 }
 
-void print_ast_node(AstNode* node, int indent) {
-    if (!node) {
-        print_indent(indent);
-        printf("<null node>\n");
-        return;
+static const char* token_to_op_string(TokenKind kind) {
+    switch (kind) {
+        case TOK_PLUS: return "+";
+        case TOK_MINUS: return "-";
+        case TOK_STAR: return "*";
+        case TOK_SLASH: return "/";
+        case TOK_PERCENT: return "%";
+        case TOK_EQUALS_EQUALS: return "==";
+        case TOK_BANG_EQUALS: return "!=";
+        case TOK_LESS_THAN: return "<";
+        case TOK_LESS_THAN_EQUALS: return "<=";
+        case TOK_GREATER_THAN: return ">";
+        case TOK_GREATER_THAN_EQUALS: return ">=";
+        case TOK_COND_AND: return "&&";
+        case TOK_COND_OR: return "||";
+        case TOK_BIT_AND_EQUALS: return "&";
+        case TOK_BIT_OR: return "|";
+        case TOK_BIT_XOR: return "^";
+        case TOK_BIT_SHIFT_LEFT: return "<<";
+        case TOK_BIT_SHIFT_RIGHT: return ">>";
+        case TOK_BANG: return "!";
+        case TOK_BIT_NOT: return "~";
+        case TOK_AMPERSAND: return "&";
+        case TOK_PLUS_PLUS: return "++";
+        case TOK_MINUS_MINUS: return "--";
+        case TOK_DOT: return ".";
+        case TOK_ARROW: return "->";
+        case TOK_EQUALS: return "=";
+        case TOK_PLUS_EQUALS: return "+=";
+        case TOK_MINUS_EQUALS: return "-=";
+        case TOK_STAR_EQUALS: return "*=";
+        case TOK_SLASH_EQUALS: return "/=";
+        case TOK_PERCENT_EQUALS: return "%=";
+        case TOK_BIT_OR_EQUALS: return "|=";
+        case TOK_BIT_XOR_EQUALS: return "^=";
+        case TOK_BIT_SHIFT_LEFT_EQUALS: return "<<=";
+        case TOK_BIT_SHIFT_RIGHT_EQUALS: return ">>=";
+        default: return "<unknown-op>";
     }
+}
 
+static void print_node(AstNode* node, int indent) {
+    if (!node) return;
+    
     print_indent(indent);
-    printf("%s", AST_KIND_STRINGS[node->kind]);
-
-    /* If the node can be followed by a line break, print it */
-    printf(":\n");
-
+    
     switch (node->kind) {
-
-    /* ────────────────────────────────
-       DECLARATIONS
-       ──────────────────────────────── */
-    case AST_MODULE_DECL: {
-        print_indent(indent+1);
-        printf("module ");
-        for (usize i = 0; i < node->module_decl.count; i++) {
-            print_slice(node->module_decl.segments[i]);
-            if (i + 1 < node->module_decl.count) printf("::");
-        }
-        printf("\n");
-    } break;
-
-    case AST_IMPORT_DECL: {
-        print_indent(indent+1);
-        printf("import ");
-        for (usize i = 0; i < node->import_decl.count; i++) {
-            print_slice(node->import_decl.segments[i]);
-            if (i + 1 < node->import_decl.count) printf("::");
-        }
-        printf("\n");
-    } break;
-
-    case AST_STRUCT_DECL: {
-        print_indent(indent+1);
-        printf("struct ");
-        print_slice(node->struct_decl.identifier);
-        printf(" {\n");
-
-        for (usize i = 0; i < node->struct_decl.count; i++) {
-            AstStructField* f = &node->struct_decl.fields[i];
-            print_indent(indent+2);
-            print_slice(f->identifier);
-            printf(": ");
-            print_type(f->type, indent);
+        case AST_MODULE_DECL: {
+            printf("MODULE ");
+            print_path(node->module_decl.segments, node->module_decl.count);
             printf("\n");
+            break;
         }
-
-        print_indent(indent+1);
-        printf("}\n");
-    } break;
-
-    case AST_ENUM_DECL: {
-        print_indent(indent+1);
-        printf("enum ");
-        print_slice(node->enum_decl.identifier);
-        printf(" {\n");
-
-        for (usize i = 0; i < node->enum_decl.count; i++) {
-            AstEnumVariant* v = &node->enum_decl.variants[i];
-            print_indent(indent+2);
-            print_slice(v->identifier);
-
-            if (v->count > 0) {
+        
+        case AST_IMPORT_DECL: {
+            printf("IMPORT ");
+            print_path(node->import_decl.segments, node->import_decl.count);
+            printf("\n");
+            break;
+        }
+        
+        case AST_STRUCT_DECL: {
+            printf("STRUCT ");
+            print_slice(node->struct_decl.identifier);
+            printf(" {\n");
+            for (usize i = 0; i < node->struct_decl.count; i++) {
+                print_indent(indent + 1);
+                print_slice(node->struct_decl.fields[i]->identifier);
+                printf(": ");
+                print_type(node->struct_decl.fields[i]->type);
+                printf("\n");
+            }
+            print_indent(indent);
+            printf("}\n");
+            break;
+        }
+        
+        case AST_ENUM_DECL: {
+            printf("ENUM ");
+            print_slice(node->enum_decl.identifier);
+            printf(" {\n");
+            for (usize i = 0; i < node->enum_decl.count; i++) {
+                print_indent(indent + 1);
+                print_slice(node->enum_decl.variants[i]->identifier);
+                if (node->enum_decl.variants[i]->value) {
+                    printf(" = (\n");
+                    print_node(node->enum_decl.variants[i]->value, indent+2);
+                    print_indent(indent + 1);
+                    printf(")");
+                }
+                printf("\n");
+            }
+            print_indent(indent);
+            printf("}\n");
+            break;
+        }
+        
+        case AST_IMPL_DECL: {
+            printf("IMPL ");
+            print_slice(node->impl_decl.target);
+            printf(" {\n");
+            for (usize i = 0; i < node->impl_decl.fn_count; i++) {
+                print_node(node->impl_decl.functions[i], indent + 1);
+            }
+            print_indent(indent);
+            printf("}\n");
+            break;
+        }
+        
+        case AST_FUNCTION_DECL: {
+            printf("FN ");
+            print_slice(node->function_decl.identifier);
+            printf("(");
+            for (usize i = 0; i < node->function_decl.param_count; i++) {
+                print_slice(node->function_decl.parameters[i].identifier);
+                printf(": ");
+                print_type(node->function_decl.parameters[i].type);
+                if (i < node->function_decl.param_count - 1) printf(", ");
+            }
+            printf("): ");
+            print_type(node->function_decl.return_type);
+            printf(" {\n");
+            for (usize i = 0; i < node->function_decl.stmt_count; i++) {
+                print_node(node->function_decl.statements[i], indent + 1);
+            }
+            print_indent(indent);
+            printf("}\n");
+            break;
+        }
+        
+        case AST_STATIC_DECL: {
+            printf("STATIC ");
+            print_slice(node->static_decl.identifier);
+            printf(": ");
+            print_type(node->static_decl.type);
+            if (node->static_decl.value) {
+                printf(" = ");
+                print_node(node->static_decl.value, 0);
+            }
+            printf("\n");
+            break;
+        }
+        
+        case AST_CONST_DECL: {
+            printf("CONST ");
+            print_slice(node->const_decl.identifier);
+            printf(": ");
+            print_type(node->const_decl.type);
+            printf(" = ");
+            print_node(node->const_decl.value, 0);
+            printf("\n");
+            break;
+        }
+        
+        case AST_VAR_DECL: {
+            printf("VAR ");
+            if (node->var_decl.is_mutable) {
+                printf("mutable ");
+            }
+            print_slice(node->var_decl.identifier);
+            printf(": ");
+            print_type(node->var_decl.type);
+            if (node->var_decl.value) {
+                printf(" = ");
+                print_node(node->var_decl.value, 0);
+                printf("\n");
+            } else {
+                printf("\n");
+            }
+            break;
+        }
+        
+        case AST_ASSIGNMENT: {
+            printf("ASSIGN ");
+            print_node(node->assignment.lvalue, 0);
+            printf(" %s ", token_to_op_string(node->assignment.op));
+            print_node(node->assignment.rvalue, 0);
+            printf("\n");
+            break;
+        }
+        
+        case AST_IF_STMT: {
+            printf("IF ");
+            print_node(node->if_stmt.expression, 0);
+            printf(" {\n");
+            for (usize i = 0; i < node->if_stmt.stmt_count; i++) {
+                print_node(node->if_stmt.statements[i], indent + 1);
+            }
+            print_indent(indent);
+            printf("}");
+            if (node->if_stmt.else_stmt) {
+                printf(" ELSE ");
+                if (node->if_stmt.else_stmt->kind == AST_IF_STMT) {
+                    printf("\n");
+                    print_node(node->if_stmt.else_stmt, indent);
+                } else {
+                    printf("{\n");
+                    print_node(node->if_stmt.else_stmt, indent + 1);
+                    print_indent(indent);
+                    printf("}\n");
+                }
+            } else {
+                printf("\n");
+            }
+            break;
+        }
+        
+        case AST_MATCH_STMT: {
+            printf("MATCH ");
+            print_node(node->match_stmt.expression, 0);
+            printf(" {\n");
+            for (usize i = 0; i < node->match_stmt.arm_count; i++) {
+                print_indent(indent + 1);
+                print_node(node->match_stmt.arms[i].pattern, 0);
+                printf(": {\n");
+                for (usize j = 0; j < node->match_stmt.arms[i].stmt_count; j++) {
+                    print_node(node->match_stmt.arms[i].statements[j], indent + 2);
+                }
+                print_indent(indent + 1);
+                printf("}\n");
+            }
+            if (node->match_stmt.stmt_count > 0) {
+                print_indent(indent + 1);
+                printf("_: {\n");
+                for (usize i = 0; i < node->match_stmt.stmt_count; i++) {
+                    print_node(node->match_stmt.statements[i], indent + 2);
+                }
+                print_indent(indent + 1);
+                printf("}\n");
+            }
+            print_indent(indent);
+            printf("}\n");
+            break;
+        }
+        
+        case AST_LOOP_STMT: {
+            printf("LOOP {\n");
+            for (usize i = 0; i < node->loop_stmt.stmt_count; i++) {
+                print_node(node->loop_stmt.statements[i], indent + 1);
+            }
+            print_indent(indent);
+            printf("}\n");
+            break;
+        }
+        
+        case AST_WHILE_STMT: {
+            printf("WHILE ");
+            print_node(node->while_stmt.cond, 0);
+            printf(" {\n");
+            for (usize i = 0; i < node->while_stmt.stmt_count; i++) {
+                print_node(node->while_stmt.statements[i], indent + 1);
+            }
+            print_indent(indent);
+            printf("}\n");
+            break;
+        }
+        
+        case AST_FOR_STMT: {
+            printf("FOR ");
+            print_node(node->for_stmt.init, 0);
+            printf("; ");
+            print_node(node->for_stmt.cond, 0);
+            printf("; ");
+            print_node(node->for_stmt.step, 0);
+            printf(" {\n");
+            for (usize i = 0; i < node->for_stmt.stmt_count; i++) {
+                print_node(node->for_stmt.statements[i], indent + 1);
+            }
+            print_indent(indent);
+            printf("}\n");
+            break;
+        }
+        
+        case AST_BREAK_STMT: {
+            printf("BREAK\n");
+            break;
+        }
+        
+        case AST_CONTINUE_STMT: {
+            printf("CONTINUE\n");
+            break;
+        }
+        
+        case AST_RETURN_STMT: {
+            printf("RETURN");
+            if (node->return_stmt.expression) {
+                printf(" ");
+                print_node(node->return_stmt.expression, 0);
+                printf("\n");
+                print_node(node->return_stmt.expression, indent + 1);
+            } else {
+                printf("\n");
+            }
+            break;
+        }
+        
+        case AST_EXPR_STMT: {
+            print_node(node->expr_stmt.expression, indent);
+            break;
+        }
+        
+        case AST_UNARY: {
+            printf("Unary(%s)\n", token_to_op_string(node->unary.op));
+            print_node(node->unary.operand, indent + 1);
+            break;
+        }
+        
+        case AST_BINARY: {
+            printf("Binary(%s)\n", token_to_op_string(node->binary.op));
+            print_node(node->binary.left, indent + 1);
+            print_node(node->binary.right, indent + 1);
+            break;
+        }
+        
+        case AST_FUNCTION_CALL: {
+            printf("Call(");
+            print_slice(node->function_call.identifier);
+            printf(")\n");
+            for (usize i = 0; i < node->function_call.arg_count; i++) {
+                print_node(node->function_call.arguments[i], indent + 1);
+            }
+            break;
+        }
+        
+        case AST_ARRAY_INDEX: {
+            printf("ArrayIndex\n");
+            print_node(node->array_index.array, indent + 1);
+            print_node(node->array_index.index, indent + 1);
+            break;
+        }
+        
+        case AST_MEMBER_ACCESS: {
+            printf("Member(%s", token_to_op_string(node->member_access.op));
+            print_slice(node->member_access.member);
+            printf(")\n");
+            print_node(node->member_access.object, indent + 1);
+            break;
+        }
+        
+        case AST_IDENTIFIER: {
+            printf("Identifier(");
+            print_slice(node->identifier.value);
+            printf(")\n");
+            break;
+        }
+        
+        case AST_LITERAL: {
+            printf("Literal(");
+            print_slice(node->literal.value);
+            printf(")\n");
+            break;
+        }
+        
+        case AST_PATTERN_IDENT: {
+            print_slice(node->pattern_ident.identifier);
+            break;
+        }
+        
+        case AST_PATTERN_LITERAL: {
+            print_slice(node->pattern_literal.literal.value);
+            break;
+        }
+        
+        case AST_PATTERN_VARIANT: {
+            print_slice(node->pattern_variant.variant);
+            if (node->pattern_variant.count > 0) {
                 printf("(");
-                for (usize j = 0; j < v->count; j++) {
-                    print_type(v->types[j], indent+2);
-                    if (j + 1 < v->count) printf(", ");
+                for (usize i = 0; i < node->pattern_variant.count; i++) {
+                    print_node(node->pattern_variant.patterns[i], 0);
+                    if (i < node->pattern_variant.count - 1) printf(", ");
                 }
                 printf(")");
             }
-            printf("\n");
+            break;
         }
-
-        print_indent(indent+1);
-        printf("}\n");
-    } break;
-
-    case AST_IMPL_DECL: {
-        print_indent(indent+1);
-        printf("impl ");
-        print_slice(node->impl_decl.target);
-        printf(" {\n");
-
-        print_ast_vec(&node->impl_decl.functions, indent+2);
-
-        print_indent(indent+1);
-        printf("}\n");
-    } break;
-
-    case AST_FUNCTION_DECL: {
-        print_indent(indent+1);
-        printf("fn ");
-        print_slice(node->function_decl.identifier);
-        printf("(");
-        for (usize i = 0; i < node->function_decl.count; i++) {
-            AstParameter* p = &node->function_decl.parameters[i];
-            print_slice(p->identifier);
-            printf(": ");
-            print_type(p->type, indent);
-            if (i + 1 < node->function_decl.count) printf(", ");
+        
+        case AST_PATTERN_WILDCARD: {
+            printf("_");
+            break;
         }
-        printf(")");
-
-        if (node->function_decl.return_type) {
-            printf(" -> ");
-            print_type(node->function_decl.return_type, indent);
+        
+        case AST_ERROR: {
+            printf("<ERROR>\n");
+            break;
         }
-
-        printf(" {\n");
-        print_ast_vec(&node->function_decl.block, indent+2);
-        print_indent(indent+1);
-        printf("}\n");
-    } break;
-
-    case AST_CONST_DECL: {
-        print_indent(indent+1);
-        printf("const ");
-        print_slice(node->const_decl.identifier);
-        printf(": ");
-        print_type(node->const_decl.type, indent);
-        printf(" =\n");
-        print_ast_node(node->const_decl.value, indent+2);
-    } break;
-
-    case AST_VAR_DECL: {
-        print_indent(indent+1);
-        printf("var ");
-        print_slice(node->var_decl.identifier);
-        printf(": ");
-        print_type(node->var_decl.type, indent);
-
-        if (node->var_decl.value) {
-            printf(" =\n");
-            print_ast_node(node->var_decl.value, indent+2);
-        } else {
-            printf("\n");
-        }
-    } break;
-
-    case AST_STATIC_DECL: {
-        print_indent(indent+1);
-        printf("static ");
-        print_slice(node->static_decl.identifier);
-        printf(": ");
-        print_type(node->static_decl.type, indent);
-        printf(" =\n");
-        print_ast_node(node->static_decl.value, indent+2);
-    } break;
-
-    /* ────────────────────────────────
-       STATEMENTS
-       ──────────────────────────────── */
-    case AST_ASSIGNMENT: {
-        print_indent(indent+1);
-        printf("assignment:\n");
-        print_ast_node(node->assignment.lvalue, indent+2);
-        print_indent(indent+2);
-        printf("op: %s\n", TOKEN_KIND_STRINGS[node->assignment.op]);
-        print_ast_node(node->assignment.rvalue, indent+2);
-    } break;
-
-    case AST_IF_STMT: {
-        print_indent(indent+1);
-        printf("if:\n");
-        print_ast_node(node->if_stmt.expression, indent+2);
-
-        print_indent(indent+1);
-        printf("then:\n");
-        print_ast_vec(&node->if_stmt.then_block, indent+2);
-
-        if (node->if_stmt.else_stmt) {
-            print_indent(indent+1);
-            printf("else:\n");
-            print_ast_node(node->if_stmt.else_stmt, indent+2);
-        }
-    } break;
-
-    case AST_MATCH_STMT: {
-        print_indent(indent+1);
-        printf("match:\n");
-        print_ast_node(node->match_stmt.expression, indent+2);
-
-        for (usize i = 0; i < node->match_stmt.count; i++) {
-            AstMatchArm* arm = &node->match_stmt.arms[i];
-            print_indent(indent+1);
-            printf("arm:\n");
-
-            print_ast_node(arm->pattern, indent+2);
-            print_ast_vec(&arm->block, indent+2);
-        }
-
-        if (node->match_stmt.default_block.count > 0) {
-            print_indent(indent+1);
-            printf("default:\n");
-            print_ast_vec(&node->match_stmt.default_block, indent+2);
-        }
-    } break;
-
-    case AST_LOOP_STMT: {
-        print_indent(indent+1);
-        printf("loop:\n");
-        print_indent(indent+2);
-        printf("block:\n");
-        print_ast_vec(&node->loop_stmt.block, indent+3);
-    } break;
-
-    case AST_FOR_STMT: {
-        print_indent(indent+1);
-        printf("for:\n");
-
-        print_indent(indent+2);
-        printf("init:\n");
-        print_ast_node(node->for_stmt.init, indent+3);
-
-        print_indent(indent+2);
-        printf("cond:\n");
-        print_ast_node(node->for_stmt.cond, indent+3);
-
-        print_indent(indent+2);
-        printf("step:\n");
-        print_ast_node(node->for_stmt.step, indent+3);
-
-        print_indent(indent+2);
-        printf("block:\n");
-        print_ast_vec(&node->for_stmt.block, indent+4);
-    } break;
-
-    case AST_BREAK_STMT:
-        print_indent(indent+1);
-        printf("break\n");
-        break;
-
-    case AST_CONTINUE_STMT:
-        print_indent(indent+1);
-        printf("continue\n");
-        break;
-
-    case AST_RETURN_STMT:
-        print_indent(indent+1);
-        printf("return:\n");
-        if (node->return_stmt.expression)
-            print_ast_node(node->return_stmt.expression, indent+2);
-        break;
-
-    case AST_EXPR_STMT:
-        print_indent(indent+1);
-        printf("expr-stmt:\n");
-        print_ast_node(node->expr_stmt.expression, indent+2);
-        break;
-
-    /* ────────────────────────────────
-       EXPRESSIONS
-       ──────────────────────────────── */
-
-    case AST_UNARY:
-        print_indent(indent+1);
-        printf("unary op=%s postfix=%d\n", TOKEN_KIND_STRINGS[node->unary.op], node->unary.is_postfix);
-        print_ast_node(node->unary.operand, indent+2);
-        break;
-
-    case AST_BINARY:
-        print_indent(indent+1);
-        printf("binary op=%s\n", TOKEN_KIND_STRINGS[node->binary.op]);
-        print_ast_node(node->binary.left, indent+2);
-        print_ast_node(node->binary.right, indent+2);
-        break;
-
-    case AST_FUNCTION_CALL:
-        print_indent(indent+1);
-        printf("call ");
-        print_slice(node->function_call.identifier);
-        printf("(\n");
-        print_ast_vec(&node->function_call.args, indent+2);
-        print_indent(indent+1);
-        printf(")\n");
-        break;
-
-    case AST_ARRAY_INDEX:
-        print_indent(indent+1);
-        printf("array-index:\n");
-        print_ast_node(node->array_index.array, indent+2);
-        print_ast_node(node->array_index.index, indent+2);
-        break;
-
-    case AST_MEMBER_ACCESS:
-        print_indent(indent+1);
-        printf("member-access .");
-        print_slice(node->member_access.member);
-        printf("\n");
-        print_ast_node(node->member_access.object, indent+2);
-        break;
-
-    case AST_IDENTIFIER:
-        print_indent(indent+1);
-        printf("id ");
-        print_slice(node->identifier.value);
-        printf("\n");
-        break;
-
-    case AST_LITERAL:
-        print_indent(indent+1);
-        printf("literal %d: ", node->literal.kind);
-        print_slice(node->literal.value);
-        printf("\n");
-        break;
-
-    /* ────────────────────────────────
-       PATTERNS
-       ──────────────────────────────── */
-    case AST_PATTERN_IDENT:
-        print_indent(indent+1);
-        printf("pattern ident ");
-        print_slice(node->pattern_ident.identifier);
-        printf("\n");
-        break;
-
-    case AST_PATTERN_LITERAL:
-        print_indent(indent+1);
-        printf("pattern literal:\n");
-        print_indent(indent+2);
-        print_slice(node->pattern_literal.literal.value);
-        printf("\n");
-        break;
-
-    case AST_PATTERN_VARIANT:
-        print_indent(indent+1);
-        printf("pattern variant ");
-        print_slice(node->pattern_variant.variant);
-        printf("(\n");
-        print_ast_vec(&node->pattern_variant.patterns, indent+2);
-        print_indent(indent+1);
-        printf(")\n");
-        break;
-
-    /* ──────────────────────────────── */
-
-    default:
-        print_indent(indent+1);
-        printf("<unhandled AST kind>\n");
-        break;
     }
 }
 
-void print_program(Program* p) {
-    for (usize i = 0; i < p->count; i++)
-        print_ast_node(&p->items[i], 0);
+void print_program(Program* program) {
+    if (!program) {
+        printf("NULL program\n");
+        return;
+    }
+
+    printf("[AST Start]\n\n");
+    
+    for (usize i = 0; i < program->count; i++) {
+        print_node(program->declarations[i], 0);
+
+        if (i < program->count - 1) {
+            printf("\n");
+        }
+    }
+
+    printf("\n[AST End]\n");
 }

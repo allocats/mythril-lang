@@ -1,0 +1,21 @@
+enum Fruit: {
+    APPLE;
+    BANANA;
+}
+
+enum Categories u8 {
+    GT3;
+    GT4;
+}
+
+enum Group: u8 
+    A;
+    B;
+}
+
+enum Brand: u8 { 
+    Subaru
+    Lancia;
+}
+
+fn main(): void {}

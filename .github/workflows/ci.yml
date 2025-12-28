@@ -1,0 +1,31 @@
+name: Build and Test Mythril
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build-and-test:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork
+    name: "Build Mythril (Arch Linux)"
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm clang make
+      
+      - name: Build compiler
+        run: |
+          make
+      
+      - name: Run clang-tidy
+        run: |
+          make check
+      
+      - name: Run test suite
+        run: |
+          make test

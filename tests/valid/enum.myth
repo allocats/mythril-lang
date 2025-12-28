@@ -1,0 +1,8 @@
+enum Fruit: u8 {
+    APPLE;
+    BANANA;
+}
+
+fn main(): void {
+    let x: Fruit = APPLE;
+}

@@ -5,11 +5,12 @@
 #include "types.h"
 
 #include "../ast_parser/types.h"
+#include "../files/types.h"
 #include "../mythril/types.h"
 
-void parse(MythrilContext* ctx, char** file_paths);
+void parse(MythrilContext* ctx, char** file_paths, FileBuffer* buffers, usize file_count);
 
-AstSlice* ast_make_slice_from_token(ArenaAllocator* arena, Token* token);
+AstSlice* make_slice_from_token(ArenaAllocator* arena, Token* token);
 
 void print_program(Program* p);
 

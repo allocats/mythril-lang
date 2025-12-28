@@ -34,6 +34,7 @@ void* arena_realloc_generic(ArenaAllocator* arena, void* ptr, size_t old_size, s
 
     while (current < old_size) {
         new_ptr[current] = old_ptr[current];
+        current++;
     }
 
     n = (new_size - old_size) / 8;
@@ -52,7 +53,7 @@ void* arena_realloc_generic(ArenaAllocator* arena, void* ptr, size_t old_size, s
     }
 
     while (current < new_size) {
-        new_ptr[current] = 0;
+        new_ptr[current++] = 0;
     }
 
     return result;

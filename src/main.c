@@ -1,7 +1,7 @@
-#include <assert.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -15,9 +15,7 @@
 #include "lexer/lexer.h"
 #include "mythril/types.h"
 #include "tokens/tokens.h"
-#include "tokens/types.h"
 #include "utils/types.h"
-#include "utils/vec.h"
 
 static ArenaAllocator arena = {0};
 
@@ -59,7 +57,10 @@ i32 map_file(FileBuffer* file_buffer, char* path) {
 
 i32 main(i32 argc, char* argv[]) {
     #ifdef MYTHRIL_DEBUG
-    
+
+    #include <assert.h>
+
+    static_assert(sizeof(MythrilContext) == 48, "MythrilContext is not 48 bytes");
     static_assert(sizeof(Token) == 16, "Token is not 16 bytes");
 
     #endif /* ifdef MYTHRIL_DEBUG */
@@ -93,12 +94,12 @@ i32 main(i32 argc, char* argv[]) {
 
     Tokens tokens = {
         .items = arena_alloc(&arena, sizeof(Token) * 64),
-        .capacity = 64,
+        .capacity = 128,
         .count = 0
     };
 
     Program program = {
-        .items = nullptr, // Allocate in parse() initial capacity of tokens.count
+        .declarations = nullptr, // Allocate in parse() initial capacity of tokens.count
         .capacity = 0,
         .count = 0
     };
@@ -135,8 +136,7 @@ i32 main(i32 argc, char* argv[]) {
 
     mythril_ctx.tokens -> items[mythril_ctx.tokens -> count++] = end_of_program_token;
 
-    /* add a TOK_EOP (end of program) token type? then append that parse until that? */
-    parse(&mythril_ctx, file_paths);
+    parse(&mythril_ctx, file_paths, buffers, file_count);
 
     #ifdef MYTHRIL_DEBUG
         print_tokens(tokens);

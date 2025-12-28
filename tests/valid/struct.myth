@@ -1,0 +1,6 @@
+struct Token {
+    lexeme: char*;
+    length: usize;
+}
+
+fn main(): void {}
